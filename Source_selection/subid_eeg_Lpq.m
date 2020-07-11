@@ -63,20 +63,20 @@
 %
 %
 
-function [A,B,H,D,K,C_out,Ro,AUX,ss] = subid_eeg_Lpq(y,L,u,i,n,AUXin,W,sil);
-kappa = 0;
+function [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,ind_Ctrue,u,i,n,AUXin,W,sil)
+kappa_cond = 0;
 warning on
   
-if (nargin < 8);sil = 0;end
+if (nargin < 9);sil = 0;end
 
 mydisp(sil,' ');
 mydisp(sil,'   Subspace Identification');
 mydisp(sil,'   -----------------------');
 
 % Check the arguments
-if (nargin < 4);error('subid needs at least four arguments');end
-if (nargin < 5);n = [];end
-if (nargin < 6);AUXin = [];end
+if (nargin < 5);error('subid needs at least four arguments');end
+if (nargin < 6);n = [];end
+if (nargin < 7);AUXin = [];end
 
 % Check if its deterministic or stochastic ID
 if isempty(u);   ds_flag = 2; 		% Stochastic
@@ -84,7 +84,7 @@ else;           ds_flag = 1; 		% Deterministic
 end  
 
 % Give W its default value
-if (nargin < 7);W = [];end
+if (nargin < 8);W = [];end
 if isempty(W)
   if (ds_flag == 1); W = 'SV'; 		% Deterministic: default to SV
   else;            W = 'CVA';end 	% Stochastic: default to CVA
@@ -107,13 +107,13 @@ if ((ny-2*i+1) < (2*l*i));error('Not enough data points');end
 % Check the weight to be used
 Wn = 0;
 if (length(W) == 2) 
-  if (all(W == 'SV') | all(W == 'sv') | all(W == 'Sv'));
+  if (all(W == 'SV') || all(W == 'sv') || all(W == 'Sv'))
     Wn = 1; 
     if (ds_flag == 1);Waux = 2;else;Waux = 3;end
   end
 end    
 if (length(W) == 3) 
-  if (prod(W == 'CVA') | prod(W == 'cva') | prod(W == 'Cva'));
+  if (prod(W == 'CVA') || prod(W == 'cva') || prod(W == 'Cva'))
     Wn = 2;
     if (ds_flag == 1);Waux = 3;else;Waux = 1;end
   end 
@@ -165,7 +165,7 @@ end
 
 mi2  = 2*m*i;
 % Set up some matrices
-if isempty(AUXin) | (Wflag == 1)
+if isempty(AUXin) || (Wflag == 1)
   Rf = R((2*m+l)*i+1:2*(m+l)*i,:); 	% Future outputs
   Rp = [R(1:m*i,:);R(2*m*i+1:(2*m+l)*i,:)]; % Past (inputs and) outputs
   if (ds_flag == 1)
@@ -209,7 +209,7 @@ end
 % **************************************
 
 % Compute the SVD
-if isempty(AUXin) | (Wflag == 1)
+if isempty(AUXin) || (Wflag == 1)
   mydisp(sil,'      Computing ... SVD');
   % Compute the matrix WOW we want to take an SVD of
   % W = 1 (SV), W = 2 (CVA)
@@ -226,11 +226,11 @@ if isempty(AUXin) | (Wflag == 1)
   end
   [U,S,V] = svd(WOW);
   if W == 2;U = W1i*U;end 		% CVA
-  ss = diag(S);
+  ss_out = diag(S);
   clear V S WOW
 else
   U = AUXin(bb+1:bb+l*i,1:l*i);
-  ss = AUXin(bb+1:bb+l*i,l*i+1);
+  ss_out = AUXin(bb+1:bb+l*i,l*i+1);
 end
 
 
@@ -242,18 +242,18 @@ end
 if isempty(n)
   figure(gcf);hold off;subplot;
   if (W == 2)
-    bar([1:l*i],real(acos(ss))*180/pi);
+    bar([1:l*i],real(acos(ss_out))*180/pi);
     title('Principal Angles');
     ylabel('degrees');
   else
-    H = bar([1:l*i],ss); xx = get(H,'XData'); yy = get(H,'YData'); 
-    semilogy(xx,yy+10^(floor(log10(min(ss)))));
-    axis([0,length(ss)+1,10^(floor(log10(min(ss)))),10^(ceil(log10(max(ss))))]);
+    H = bar([1:l*i],ss_out); xx = get(H,'XData'); yy = get(H,'YData'); 
+    semilogy(xx,yy+10^(floor(log10(min(ss_out)))));
+    axis([0,length(ss_out)+1,10^(floor(log10(min(ss_out)))),10^(ceil(log10(max(ss_out))))]);
     title('Singular Values');
   end
   xlabel('Order');
   n = 0;
-  while (n < 1) | (n > l*i-1)
+  while (n < 1) || (n > l*i-1)
     n = input('      System order ? ');
     if isempty(n);n = -1;end
   end
@@ -268,7 +268,7 @@ U1 = U(:,1:n); 				% Determine U1
 % **************************************
 
 % Determine gam and gamm
-gam  = U1*diag(sqrt(ss(1:n)));  % Gamma_i
+gam  = U1*diag(sqrt(ss_out(1:n)));  % Gamma_i
 gamm = gam(1:l*(i-1),:);        % Gamma_i-1 (Page 36)
 % The pseudo inverses
 gam_inv  = pinv(gam); 			% Pseudo inverse
@@ -290,27 +290,6 @@ gamm_inv = pinv(gamm); 			% Pseudo inverse
 %==========================================================================
 % Seperately compute A by least square and C by sparse row method
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Rhs = [  gam_inv*R((2*m+l)*i+1:2*(m+l)*i,1:(2*m+l)*i),zeros(n,l) ; ...
          R(m*i+1:2*m*i,1:(2*m+l)*i+l)]; 
 
@@ -319,51 +298,50 @@ A = LhsA/Rhs;
 
 LhsC = R((2*m+l)*i+1:(2*m+l)*i+l,1:(2*m+l)*i+l);
 % C is solved from min ||LhsC-L*C*Rhs||^2 + lambda*sum||Cj|| where H=L*C
-if kappa
+
 % PRECOMPUTATION
-Timepoints = 400;
-C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
-% [C,C_L21_bic,C_Lpq,C_L21,bic_ind_Lpq,bic_ind_L21,alpha] = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
-[C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,alpha,n,C_Lpq);
-% C_out.C_Lpqk = C_out.C_Lpq(:,:,C_out.ind_k_ncvx);
 
-[C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,alpha,n,C_L21);
-% C_out.C_L21k = C_out.C_L21(:,:,C_out.ind_k_cvx);
 
-% H = LhsC/Rhs; %%%%%%% Give sparse row algorithm to this line
-H = L*C_out.C_Lpq(:,:,C_out.bic_ind_Lpq);
+
+if kappa_cond
+    % PRECOMPUTATION
+    Timepoints = 1000;
+    C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
+    [C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,C_out.alpha,n,C_out.C_Lpq);
+    
+    [C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,C_out.alpha,n,C_out.C_L21);
 else
     [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
-    H = L*C_out.C_Lpq(:,:,C_out.bic_ind_Lpq);
 end
 
+[~,~,nc] = size(C_out.C_Lpq);
+
+% Choose C by the first C such that setdiff(ind_C_Lpq,ind_Ctrue) +
+% setdiff(ind_C_Lpq,ind_Ctrue) is minimized
+
+C_norm = sqrt(sum(C_out.C_Lpq.^2,2));
+ind_C = cell(nc,1);
+sumlength = zeros(nc,1);
+for kk = 1:nc
+    ind_C{kk} = find(C_norm(:,:,kk));
+    sumlength(kk) = length(setdiff(ind_C{kk},ind_Ctrue)) + length(setdiff(ind_Ctrue,ind_C{kk}));
+end
+[~,C_out.ind_chosen] = min(sumlength);
+% C = C_Lpq(:,:,ind_chosen);
+% C = C_Lpq(:,:,ind_chosen);
+% C_CLS = C_Lpq_CLS(:,:,ind_chosen);
+C_out.ind_nonzero = ind_C(C_out.ind_chosen);
+% ind_chosen = ind_C{ind_chosen};
 
 
+for kk=1:length(nc)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+H = L*C_out.C_Lpq(:,:,kk);
+H_CLS = L*C_out.C_Lpq_CLS(:,:,kk);
 
 %==========================================================================
 res = [LhsA;LhsC] - [A;H]*Rhs; 			% Residuals
+res_CLS = [LhsA;LhsC] - [A;H_CLS]*Rhs;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%   Recompute gamma from A and C
@@ -399,7 +377,7 @@ else
   % P and Q as on page 125
   P = Lhs - [A;H]*Rhs(1:n,:);
   P = P(:,1:2*m*i);
-  Q = R(m*i+1:2*m*i,1:2*m*i); 		% Future inputs
+  Q(:,:,kk) = R(m*i+1:2*m*i,1:2*m*i); 		% Future inputs
 
   % L1, L2, M as on page 119
   L1 = A * gam_inv;
@@ -413,11 +391,11 @@ else
     N = [...
 	    [M(:,(k-1)*l+1:l*i)-L1(:,(k-1)*l+1:l*i),zeros(n,(k-1)*l)]
 	[-L2(:,(k-1)*l+1:l*i),zeros(l,(k-1)*l)]];
-    if k == 1;
+    if k == 1
       N(n+1:n+l,1:l) = eye(l) + N(n+1:n+l,1:l);
     end
     N = N*X;
-    totm = totm + kron(Q((k-1)*m+1:k*m,:)',N);
+    totm = totm + kron(Q((k-1)*m+1:k*m,:,kk)',N);
   end
   
   % Solve Least Squares
@@ -430,58 +408,62 @@ else
   B = sol_bd(l+1:l+n,:);
 end  
 
-
 % **************************************
 %               STEP 7 
 % **************************************
 
-if (norm(res) > 1e-10)
+    if (norm(res) > 1e-10)
+        % Determine QSR from the residuals
+        mydisp(sil,['      Computing ... System matrices G,L0 (Order ',num2str(n),')']);
+        % Determine the residuals
+        cov_res = res*res'; 			% Covariance
+        Q(:,:,kk) = cov_res(1:n,1:n);S(:,:,kk) = cov_res(1:n,n+1:n+l);R_cov(:,:,kk) = cov_res(n+1:n+l,n+1:n+l);
+        
+        sig = dlyap(A,Q(:,:,kk));
+        G = A*sig*H' + S(:,:,kk);
+        L0 = H*sig*H' + R_cov(:,:,kk);
+        
+        % Determine K and Ro
+        mydisp(sil,'      Computing ... Riccati solution')
+        [K(:,:,kk),Ro(:,:,kk)] = gl2kr(A,G,H,L0);
+    else
+        Ro(:,:,kk) = [];
+        K(:,:,kk) = [];
+    end
+
+
+if (norm(res_CLS) > 1e-10)
   % Determine QSR from the residuals
   mydisp(sil,['      Computing ... System matrices G,L0 (Order ',num2str(n),')']); 
   % Determine the residuals
-  cov = res*res'; 			% Covariance
-  Qs = cov(1:n,1:n);Ss = cov(1:n,n+1:n+l);Rs = cov(n+1:n+l,n+1:n+l); 
+  cov_res = res_CLS*res_CLS'; 			% Covariance
+  Q_CLS(:,:,kk) = cov_res(1:n,1:n);S_CLS = cov_res(1:n,n+1:n+l);R_cov_CLS = cov_res(n+1:n+l,n+1:n+l); 
   
-  sig = dlyap(A,Qs);
-  G = A*sig*H' + Ss;
-  L0 = H*sig*H' + Rs;
+  sig = dlyap(A,Q(:,:,kk));
 
+  G_CLS = A*sig*H_CLS' + S_CLS;
+  L0_CLS = H_CLS*sig*H_CLS' + R_cov_CLS;
+  
   % Determine K and Ro
   mydisp(sil,'      Computing ... Riccati solution')
-  [K,Ro] = gl2kr(A,G,H,L0);
+  [K_CLS(:,:,kk),Ro_CLS(:,:,kk)] = gl2kr(A,G_CLS,H_CLS,L0_CLS);
 else
-  Ro = [];
-  K = [];
+  Ro_CLS(:,:,kk) = [];
+  K_CLS(:,:,kk) = [];
+
 end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%                                  END ALGORITHM
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-% Make AUX when needed
-if nargout > 16
-  AUX = zeros((4*l+2*m)*i+1,2*(m+l)*i);
-  if isempty(Uaux);Uaux = 0;end
-  info = [ds_flag,i,Uaux,y(1,1),Waux]; % in/out - i - u(1,1) - y(1,1) - W
-  AUX(1,1:5) = info;
-  bb = 1;
-  AUX(bb+1:bb+2*(m+l)*i,1:2*(m+l)*i) = R;
-  bb = bb+2*(m+l)*i;
-  AUX(bb+1:bb+l*i,1:2*(m+l)*i) = Ob;
-  bb = bb+l*i;
-  AUX(bb+1:bb+l*i,1:l*i) = U;
-  AUX(bb+1:bb+l*i,l*i+1) = ss;
 end
-
-
-
-
-
-
+  sys_est.A = A;
+  sys_est.B =  B;
+  sys_est.H = H;
+  sys_est.D = D;
+  
+%   K,K_CLS,C_out,Ro,Ro_CLS,Q,Q_CLS,R,R_CLS,S,S_CLS,ss_out
+  C_out.K = K;
+  C_out.K_CLS = K_CLS;
+  C_out.Ro = Ro;
+  C_out.Ro_CLS = Ro_CLS;
+  C_out.Q = Q;
+  C_out.Q_CLS = Q_CLS;
+  C_out.R_cov = R_cov;
+  C_out.R_cov_CLS = R_cov_CLS;
