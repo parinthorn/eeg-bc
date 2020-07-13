@@ -44,8 +44,11 @@
 %               sigma_w     :   covariance of the noise w(t) = B*e(t)
 %
 %========================================================================== 
-function [SYSTEM] = gengcss_eeg(PARAMETER,band,fs)
-
+function [SYSTEM] = gengcss_eeg(PARAMETER,band,fs,binaryGC)
+if nargin<4
+    binaryGC=0;
+    flag = 'fullGC';
+end
 m_active = PARAMETER.m_active;
 m_inactive = PARAMETER.m_inactive;
 m = m_active+m_inactive;
@@ -92,8 +95,11 @@ sys = series_ss2ss(sys_var,sys_filter);
 A = sys.A; B = sys.B; C = sys.C; D = sys.D;
 sigma_w = B*PARAMETER.sigma_ar*B';
 sigma_n = zeros(m_active);
-
+if binaryGC
+    F = (Avar(:,:,1)~=0);
+else
 F = calgcss(A,C,sigma_w,sigma_n,zeros(sA,m_active));
+end
 indexF = find(abs(F)>0.001);
 indexGC = VARstruct.ind_nz;
 indexDiag = [1:m_active+1:m_active^2]';
@@ -156,6 +162,7 @@ SYSTEM.PARAMETER.sigma_w = sigma_w;
 SYSTEM.source_model0 = sys_new;
 SYSTEM.F0 = Fnew;
 SYSTEM.indexGC = indexGC;
+SYSTEM.flag = flag;
 
 
 
