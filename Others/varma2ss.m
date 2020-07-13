@@ -20,7 +20,7 @@
 %           sys     =   MATLAB state-space object
 %
 %========================================================================== 
-function [sys] = varma2ss(A,C,type)
+function [sys] = varma2ss(A,C,type,Ts)
 if nargin < 3
     type = 'Hamilton';
 end
@@ -44,7 +44,7 @@ if strcmp(type,'Hamilton')
     end
 %	The input matrix is [I 0]'
     Bs = [eye(iA);zeros(iA*kA-iA,iA)];
-    sys = ss(As,Bs,Cs,0,1);
+    sys = ss(As,Bs,Cs,0,Ts);
 
 % ---------------------- Harvey form --------------------------------------
 elseif strcmp(type,'Harvey')
@@ -63,7 +63,7 @@ elseif strcmp(type,'Harvey')
     end
 %	The output matrix is [I 0]
     Cs = [eye(iA),zeros(iA,iA*kA-iA)];
-    sys = ss(As,Bs,Cs,0,1);
+    sys = ss(As,Bs,Cs,0,Ts);
 end
 end
 

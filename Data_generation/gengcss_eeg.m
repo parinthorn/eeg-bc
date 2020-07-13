@@ -22,8 +22,6 @@
 %               m_active    :   number of active sources
 %               m_inactive  :   number of inactive sources
 %               lag         :   VAR model's order
-%               fp          :   order of filter's numerator
-%               fq          :   order of filter's denominator
 %               density     :   density of non-zero entries in GC matrix
 %               sigma_ar    :   covariance of the noise e(t)
 %           
@@ -46,8 +44,8 @@
 %               sigma_w     :   covariance of the noise w(t) = B*e(t)
 %
 %========================================================================== 
-function [SYSTEM] = gengcss_eeg(PARAMETER,binaryGC)
-if nargin<2
+function [SYSTEM] = gengcss_eeg(PARAMETER,band,fs,binaryGC)
+if nargin<4
     binaryGC=0;
     flag = 'fullGC';
 end
@@ -55,10 +53,7 @@ m_active = PARAMETER.m_active;
 m_inactive = PARAMETER.m_inactive;
 m = m_active+m_inactive;
 lag = PARAMETER.lag;
-% fp = PARAMETER.fp;
-% fq = PARAMETER.fq;
-filter_zero = PARAMETER.filter_zero;
-filter_pole = PARAMETER.filter_pole;
+nbutter = PARAMETER.nbutter;
 density = PARAMETER.density;
 n_source_cluster = PARAMETER.n_source_cluster;
 group_density = PARAMETER.group_density;
@@ -67,12 +62,9 @@ SYSTEM.PARAMETER.m = m;
 SYSTEM.PARAMETER.m_active = m_active;
 SYSTEM.PARAMETER.m_inactive = m_inactive;
 SYSTEM.PARAMETER.lag = lag;
-fp = length(filter_zero);
-fq = length(filter_pole);
-SYSTEM.PARAMETER.filter_zero=filter_zero;
-SYSTEM.PARAMETER.filter_pole=filter_pole;
+SYSTEM.PARAMETER.nbutter = PARAMETER.nbutter;
 SYSTEM.PARAMETER.density = density;
-SYSTEM.PARAMETER.group_density = group_density;
+SYSTEM.PARAMETER.roi_density = group_density;
 SYSTEM.PARAMETER.n_source_cluster = n_source_cluster;
 
 %   Generate VAR model parameters
@@ -89,40 +81,29 @@ ind_cluster_source = VARstruct.ind_cluster_source;
 Avar = VARstruct.A;
 
 %   Convert Avar to state-space
-sys_var = varma2ss(Avar,zeros(m_active,m_active));
+sys_var = varma2ss(Avar,zeros(m_active,m_active),'Hamilton',1/fs);
 
 %   Generate an invertible stable diagonal filter and convert to ss model
-filter_tf = gen_diagfilter_eeg(filter_zero,filter_pole,m_active);
+filter_tf = gen_diagbutter(m_active,nbutter,band,fs);
 sys_filter = ss(filter_tf,'minimal');
 
 %   Obtain a series connected state-space model of sys_var and sys_filter
-sys_beforeT = series_ss2ss(sys_var,sys_filter);
-T = rand(size(sys_beforeT.A));
-sys = ss2ss(sys_beforeT,T);
-if binaryGC
-    flag = 'binaryGC';
-    sigma_w = sys.B*PARAMETER.sigma_ar*sys.B';
-    sigma_n = zeros(m_active);
-    F = (Avar(:,:,1)~=0);
-    indexF = find(F);
-    indexGC = VARstruct.ind_nz;
-    indexDiag = [1:m_active+1:m_active^2]';
-    indexF = setdiff(indexF,indexDiag);
-    indexGC = setdiff(indexGC,indexDiag);
-else
-    flag = 'FullGC';
-    [sA,~] = size(sys.A);
-    A = sys.A; B = sys.B; C = sys.C; D = sys.D;
-    sigma_w = B*PARAMETER.sigma_ar*B';
-    sigma_n = zeros(m_active);
-    F = calgcss(A,C,sigma_w,sigma_n,zeros(sA,m_active));
-    indexF = find(abs(F)>0.01);
-    indexGC = VARstruct.ind_nz;
-    indexDiag = [1:m_active+1:m_active^2]';
-    indexGC = setdiff(indexGC,indexDiag);
-end
-%   Calculated the GC matrix of sys (before)
+sys = series_ss2ss(sys_var,sys_filter);
 
+%   Calculated the GC matrix of sys (before)
+[sA,~] = size(sys.A);
+A = sys.A; B = sys.B; C = sys.C; D = sys.D;
+sigma_w = B*PARAMETER.sigma_ar*B';
+sigma_n = zeros(m_active);
+if binaryGC
+    F = (Avar(:,:,1)~=0);
+else
+F = calgcss(A,C,sigma_w,sigma_n,zeros(sA,m_active));
+end
+indexF = find(abs(F)>0.001);
+indexGC = VARstruct.ind_nz;
+indexDiag = [1:m_active+1:m_active^2]';
+indexGC = setdiff(indexGC,indexDiag);
 
 if ~isempty(union(setdiff(indexF,indexGC),setdiff(indexGC,indexF)))
     error('Zero pattern of F may not be correct');
@@ -136,7 +117,7 @@ if m_inactive > 0
     
     ind_cluster_source_new = zeros(size(ind_cluster_source));
     ind_cluster_source_new(1) = 1;
-    [nC,mC] = size(sys.C); [nD,mD] = size(sys.D);
+    [nC,mC] = size(sys.C); [nA,~] = size(sys.A);
     
     Ai = sys.A;
     Bi = eye(mC);
@@ -150,9 +131,9 @@ if m_inactive > 0
             [sys.C(ind_cluster_source(i):ind_cluster_source(i+1)-1,:);zeros(m_in_perroi,mC)];
     end
     Ci(ind_cluster_source_new(n_source_cluster):m,:) = ...
-        [sys.C(ind_cluster_source(n_source_cluster):m_active,:);zeros(m_in_perroi+res,m_active*(lag+fq))];% butter
+        [sys.C(ind_cluster_source(n_source_cluster):m_active,:);zeros(m_in_perroi+res,nA)];
     
-    sys_new = ss(Ai,Bi,Ci,Di,1);
+    sys_new = ss(Ai,Bi,Ci,Di,1/fs);
     Fnew = zeros(m,m);
     
     ind_F_ij = 1:m_active;
@@ -169,18 +150,17 @@ if m_inactive > 0
     active_index = ind_F_ij_new;
 else
     active_index = 1:m_active;
-    ind_cluster_source_new = 0;
+    ind_cluster_source_new = ind_cluster_source;
     Fnew = F;
+    [nC,mC] = size(sys.C);
+    sys_new = ss(sys.A,eye(size(sigma_w)),sys.C,zeros(nC,mC),1/fs); 
 end
 
 SYSTEM.PARAMETER.ind_active = active_index;
-SYSTEM.ind_cluster_source = ind_cluster_source_new;
-SYSTEM.ind_cluster_source_old = ind_cluster_source;
-SYSTEM.sys_ss = sys_new;
-SYSTEM.F = Fnew;
-SYSTEM.Fold = F;
-SYSTEM.sys_ss_old = sys;
-SYSTEM.sigma_w = sigma_w;
+SYSTEM.PARAMETER.ind_cluster_source = ind_cluster_source_new;
+SYSTEM.PARAMETER.sigma_w = sigma_w;
+SYSTEM.source_model0 = sys_new;
+SYSTEM.F0 = Fnew;
 SYSTEM.indexGC = indexGC;
 SYSTEM.flag = flag;
 
