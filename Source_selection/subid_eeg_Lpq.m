@@ -63,8 +63,9 @@
 %
 %
 
-function [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,ind_Ctrue,u,i,n,AUXin,W,sil)
+function [sys_est,C_out,ss_out] = subid_eeg_Lpq_test(y,L,ind_Ctrue,u,i,n,AUXin,W,sil)
 kappa_cond = 0;
+IsFine = 1;
 warning on
   
 if (nargin < 9);sil = 0;end
@@ -306,12 +307,12 @@ LhsC = R((2*m+l)*i+1:(2*m+l)*i+l,1:(2*m+l)*i+l);
 if kappa_cond
     % PRECOMPUTATION
     Timepoints = 1000;
-    C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
+    C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
     [C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,C_out.alpha,n,C_out.C_Lpq);
     
     [C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,C_out.alpha,n,C_out.C_L21);
 else
-    [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,1);
+    [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
 end
 
 [~,~,nc] = size(C_out.C_Lpq);
@@ -333,11 +334,8 @@ end
 C_out.ind_nonzero = ind_C(C_out.ind_chosen);
 % ind_chosen = ind_C{ind_chosen};
 
-
-for kk=1:length(nc)
-
-H = L*C_out.C_Lpq(:,:,kk);
-H_CLS = L*C_out.C_Lpq_CLS(:,:,kk);
+H = L*C_out.C_Lpq(:,:,C_out.ind_chosen);
+H_CLS = L*C_out.C_Lpq_CLS(:,:,C_out.ind_chosen);
 
 %==========================================================================
 res = [LhsA;LhsC] - [A;H]*Rhs; 			% Residuals
@@ -377,7 +375,7 @@ else
   % P and Q as on page 125
   P = Lhs - [A;H]*Rhs(1:n,:);
   P = P(:,1:2*m*i);
-  Q(:,:,kk) = R(m*i+1:2*m*i,1:2*m*i); 		% Future inputs
+  Q = R(m*i+1:2*m*i,1:2*m*i); 		% Future inputs
 
   % L1, L2, M as on page 119
   L1 = A * gam_inv;
@@ -417,18 +415,18 @@ end
         mydisp(sil,['      Computing ... System matrices G,L0 (Order ',num2str(n),')']);
         % Determine the residuals
         cov_res = res*res'; 			% Covariance
-        Q(:,:,kk) = cov_res(1:n,1:n);S(:,:,kk) = cov_res(1:n,n+1:n+l);R_cov(:,:,kk) = cov_res(n+1:n+l,n+1:n+l);
+        Q = cov_res(1:n,1:n);S = cov_res(1:n,n+1:n+l);R_cov = cov_res(n+1:n+l,n+1:n+l);
         
-        sig = dlyap(A,Q(:,:,kk));
-        G = A*sig*H' + S(:,:,kk);
-        L0 = H*sig*H' + R_cov(:,:,kk);
+        sig = dlyap(A,Q);
+        G = A*sig*H' + S;
+        L0 = H*sig*H' + R_cov;
         
         % Determine K and Ro
         mydisp(sil,'      Computing ... Riccati solution')
-        [K(:,:,kk),Ro(:,:,kk)] = gl2kr(A,G,H,L0);
+        [K,Ro] = gl2kr(A,G,H,L0);
     else
-        Ro(:,:,kk) = [];
-        K(:,:,kk) = [];
+        Ro = [];
+        K = [];
     end
 
 
@@ -437,21 +435,20 @@ if (norm(res_CLS) > 1e-10)
   mydisp(sil,['      Computing ... System matrices G,L0 (Order ',num2str(n),')']); 
   % Determine the residuals
   cov_res = res_CLS*res_CLS'; 			% Covariance
-  Q_CLS(:,:,kk) = cov_res(1:n,1:n);S_CLS = cov_res(1:n,n+1:n+l);R_cov_CLS = cov_res(n+1:n+l,n+1:n+l); 
+  Q_CLS = cov_res(1:n,1:n);S_CLS = cov_res(1:n,n+1:n+l);R_cov_CLS = cov_res(n+1:n+l,n+1:n+l); 
   
-  sig = dlyap(A,Q(:,:,kk));
+  sig = dlyap(A,Q);
 
   G_CLS = A*sig*H_CLS' + S_CLS;
   L0_CLS = H_CLS*sig*H_CLS' + R_cov_CLS;
   
   % Determine K and Ro
   mydisp(sil,'      Computing ... Riccati solution')
-  [K_CLS(:,:,kk),Ro_CLS(:,:,kk)] = gl2kr(A,G_CLS,H_CLS,L0_CLS);
+  [K_CLS,Ro_CLS] = gl2kr(A,G_CLS,H_CLS,L0_CLS);
 else
-  Ro_CLS(:,:,kk) = [];
-  K_CLS(:,:,kk) = [];
+  Ro_CLS = [];
+  K_CLS = [];
 
-end
 end
   sys_est.A = A;
   sys_est.B =  B;
@@ -467,3 +464,5 @@ end
   C_out.Q_CLS = Q_CLS;
   C_out.R_cov = R_cov;
   C_out.R_cov_CLS = R_cov_CLS;
+  
+
