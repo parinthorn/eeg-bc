@@ -63,7 +63,7 @@
 %
 %
 
-function [sys_est,C_out,ss_out] = subid_eeg_Lpq_test(y,L,ind_Ctrue,u,i,n,AUXin,W,sil)
+function [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,ind_Ctrue,u,i,n,AUXin,W,sil)
 kappa_cond = 0;
 IsFine = 1;
 warning on
