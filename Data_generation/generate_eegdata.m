@@ -1,4 +1,4 @@
-function generate_eegdata(nbatch,foldername,plotting)
+function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
 %
 %   Jitkomut Songsiri, Parinthorn Manomaisaowapak, Anawat Nartkulpat, 2020
 %
@@ -9,7 +9,10 @@ function generate_eegdata(nbatch,foldername,plotting)
 %           nbatch      =   number of data batch for the generated model
 %           foldername  =   name of the folder for saving data
 %           plotting    =   1 for plotting everything
-%                           0 for no plotting (and no saving any plotting)
+%                           0 for no plotting (not save any figure)
+%           postfix     =   add string postfix to outputfile name
+%           sa          =   (*******ADD THIS*******)
+%           
 %
 %   OUTPUT:
 %       No direct output from this function. But the model parameters and
@@ -18,8 +21,8 @@ function generate_eegdata(nbatch,foldername,plotting)
 %
 %   data --> 'foldername' 
 %                |
-%                |-> eegdata.mat   :   contain eeg and source data matrices
-%                |-> model.mat     :   contain model parameters
+%                |-> eegdata_postfix.mat   :   contain eeg and source data matrices
+%                |-> model_postfix.mat     :   contain model parameters
 %                |
 %                --> figure
 %                
@@ -52,18 +55,24 @@ function generate_eegdata(nbatch,foldername,plotting)
 %    along with this program.  If not, see http://www.gnu.org/licenses/.
 
 close all; 
-addpath tools
-addpath tools/matlab_bgl
-addpath tools/export_fig
-addpath TestingCode
-addpath pvo_subspace/subfun
+% addpath tools
+% addpath tools/matlab_bgl
+% addpath tools/export_fig
+% addpath TestingCode
+% addpath pvo_subspace/subfun
 
 % load head model and some miscallaneous data
-load('data/sa')
+if nargin<5
+    load('data/sa')
+end
 load('data/miscdata')
 
 % create directory to store data in
 mkdir(['data/' foldername])
+
+if nargin <4
+    postfix = '';
+end
 
 %%
 % initialize random number generator
@@ -74,15 +83,15 @@ rng_seed = rng;
 truth.dataset = foldername;
 
 % parameter of state-space model of sources REVISE
-n_source = 10; %(m in the document)
-n_source_active = 5;
+n_source = 80; %(m in the document)
+n_source_active = 30;
 PARAMETER.m = n_source;                   % #SOURCES
 PARAMETER.m_active = n_source_active;            % #Active sources
 PARAMETER.m_inactive = PARAMETER.m-PARAMETER.m_active;  % #Inactive sources (Redundant)
 PARAMETER.lag = 2;                  % #lag
-PARAMETER.nbutter = 2;              % order of Butterworth bandpass filter
+PARAMETER.nbutter = 3;              % order of Butterworth bandpass filter
 PARAMETER.density = 0.8;            % Density of GC matrix
-PARAMETER.group_density = 0.8;
+PARAMETER.group_density = 0.9;
 PARAMETER.sigma_ar = 1*eye(PARAMETER.m_active);       % VAR process noise
 PARAMETER.rng_seed = rng_seed;      %  save seed of the random number generator
 
@@ -91,7 +100,7 @@ EEG_M = length(sa.EEG_clab_electrodes);
 PARAMETER.r = EEG_M;
 
 % number of cluster of sources (must be less than n_source)
-n_source_cluster = 3;
+n_source_cluster = 4;
 PARAMETER.n_source_cluster = n_source_cluster;
 
 % spatial standard deviation of the sources (along cortical manifold) in mm
@@ -133,9 +142,9 @@ end
 
 % loop over datasets to be generated
 
-% create folder for dataset idata
-%   mkdir(['data/' foldername '/EEG/dataset_' num2str(idata)])
-%   mkdir(['data/' foldername '/truth/dataset_' num2str(idata)]
+% create folder for dataset ibatch
+%   mkdir(['data/' foldername '/EEG/dataset_' num2str(ibatch)])
+%   mkdir(['data/' foldername '/truth/dataset_' num2str(ibatch)]
 
 %% Model generation
 
@@ -143,7 +152,9 @@ end
 % parameter of the model
 
 sys = gengcss_eeg(PARAMETER,truth.bandpass,fs);  % system of source dynamics
-
+% imagesc(sys.F0)
+% axis('square')
+% pause(0.1)
 %% spatial structure definition
 
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
@@ -212,8 +223,8 @@ factorC = zeros(nbatch,1);
 %=================== start batch generation loop ==========================
 
 for ibatch = 1:nbatch
-
 %% Sources data generation
+fprintf('Generating batch number: %d \n',ibatch)
 
 % generate sources data from the source system and corrupt inactive sources with pink noise
 [truth.sources(:,:,ibatch),sys.PARAMETER.pinknoise_cov(:,:,ibatch),factorC(ibatch)] = getdatass_pinknoise(sys,N,truth.snr);
@@ -261,9 +272,9 @@ EEG_baseline_data = truth.snr_sensor*EEG_brain_noise + (1-truth.snr_sensor)*EEG_
 EEG_baseline_data = filtfilt(b_high, a_high, EEG_baseline_data')';
 
 %% Plotting
-idata = 1;
-if plotting && ibatch == 1
-
+% if plotting && ibatch == 1
+if plotting
+    
 load('tools/cm17');
 
 % freq_inds = (truth.bandpass(1)*2+1):(truth.bandpass(2)*2+1); 
@@ -276,25 +287,25 @@ k = randperm(n_source); k = k(1); % source index
 % k-source amplitude distribution
 ma = max(truth.source_amp(:, k));
 allplots_cortex(sa, truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, k), ...
-    [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/source1']);
+    [0 ma], cm17a, 'A.U.', 1, ['data/' foldername '/figures/dataset' num2str(ibatch) '/source1']);
           
 % all source amplitude distributions
 ma = max(sum(truth.source_amp, 2));
 allplots_cortex(sa, sum(truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, :), 2), ...
-    [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/sources']);
+    [0 ma], cm17a, 'A.U.', 1, ['data/' foldername '/figures/dataset' num2str(ibatch) '/sources']);
 
 % dipole patterns
 ma = max(abs(truth.EEG_field_pat(:, k)));
-allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_pat1'], sa.EEG_locs_3D(:, 1:3));
+allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_pat' num2str(k)], sa.EEG_locs_3D(:, 1:3));
     
-ma = max(abs(sum(truth.field_pat, 2)));
-allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/pats']);
+% ma = max(abs(sum(truth.field_pat, 2)));
+% allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['data/' foldername '/figures/dataset' num2str(ibatch) '/pats']);
 
-export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_psd'], '-r150', '-a2');
+export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_psd'], '-r150', '-a2');
 
 % plot svd spectrum
-P1 = svd(EEG_data);      
-Pb = svd(EEG_baseline_data);
+P1 = svd(EEG_data(:,:,ibatch));      
+Pb = svd(EEG_baseline_data(:,:));
 figure; subplot(3, 1, [1 2])
 plot(P1, 'linewidth', 2)
 hold on    
@@ -306,17 +317,17 @@ title('EEG')
 grid on
 legend(truth.dataset, 'Baseline')
 axis tight
-export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '-r150', '-a2');
+export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_svd'], '-r150', '-a2');
 
 
 % plot power spectrum and EEG data compare to baseline
 
     figure;
     
-    no = sqrt(sum(EEG_data.^2, 2));
+    no = sqrt(sum(EEG_data(:,:,ibatch).^2, 2));
     [~, in_no] = max(no); % choosing channel with maximum norm eeg (===REVISE===)
-    ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    ss = std(EEG_data(in_no, :, ibatch));
+    [P1, f1] = pwelch(EEG_data(in_no, :, ibatch)/ss, hanning(fs), [], fs, fs);     
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     
     subplot(3, 3, [1, 4])
@@ -334,8 +345,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
 
     % plot normalize time series
     subplot(3, 3, 7)
-    ss = std(EEG_data(in_no, 1:1000));
-    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
+    ss = std(EEG_data(in_no, 1:1000, ibatch));
+    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000, ibatch)/ss)
     hold on     
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
@@ -356,8 +367,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     no_temp(in_no) = -inf;
     [~, in_no] = max(no_temp); % choosing channel with maximum norm eeg (===REVISE===)
     disp(in_no)
-    ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    ss = std(EEG_data(in_no, :, ibatch));
+    [P1, f1] = pwelch(EEG_data(in_no, :, ibatch)/ss, hanning(fs), [], fs, fs);     
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     
     subplot(3, 3, [i+1, i+4])
@@ -375,8 +386,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
 
     % plot normalize time series
     subplot(3, 3, i+7)
-    ss = std(EEG_data(in_no, 1:1000));
-    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
+    ss = std(EEG_data(in_no, 1:1000, ibatch));
+    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000, ibatch)/ss)
     hold on     
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
@@ -385,6 +396,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     grid on
     legend(truth.dataset, 'Baseline')
     axis tight
+    
+    export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_timeseries_spectrum'], '-r150', '-a2');
         
     end
     
@@ -392,8 +405,7 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     
     figure;
     k = randi(length(sys.PARAMETER.ind_active));
-    [Psource, fsource] = pwelch(truth.sources(sys.PARAMETER.ind_active(k), :)/ss, hanning(fs), [], fs, fs);
-%     [Psource, fsource] = pwelch(testdata/ss, hanning(fs), [], fs, fs);
+    [Psource, fsource] = pwelch(truth.sources(sys.PARAMETER.ind_active(k), :, ibatch)/ss, hanning(fs), [], fs, fs);
     subplot(2, 1, [1, 2])
     semilogy(fsource, Psource, 'r', 'linewidth', 2)
     set(gca, 'fontsize', 18)
@@ -405,9 +417,11 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     axis tight
     xlim([0 45])
 
-    export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_timeseries'], '-r150', '-a2');
+    export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/source' num2str(k) 'spectrum'], '-r150', '-a2');
 
 end
+
+close all;
 
 end
 %================== End batch generation loop =============================
@@ -417,11 +431,13 @@ end
 eegdata = struct('EEG_data',EEG_data,'source_data',truth.sources,'sampling_frequency',fs,'snr_source',truth.snr,...
                  'snr_sensor',truth.snr_sensor);
              
-model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
-                'F0',sys.F0,'F',sys.F);
+% model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
+%                 'F0',sys.F0,'F',sys.F);
+model = sys;
+model.truth = truth;
 
-save(['data/',foldername,'/eegdata'], 'eegdata');
-save(['data/' foldername '/model'], 'model');
+save(['data/' foldername '/eegdata_', postfix], 'eegdata');
+save(['data/' foldername '/model_',postfix], 'model');
 
 end
 %================== End function ==========================================
