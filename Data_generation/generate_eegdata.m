@@ -1,4 +1,4 @@
-function generate_eegdata(nbatch,foldername,plotting)
+function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
 %
 %   Jitkomut Songsiri, Parinthorn Manomaisaowapak, Anawat Nartkulpat, 2020
 %
@@ -9,7 +9,8 @@ function generate_eegdata(nbatch,foldername,plotting)
 %           nbatch      =   number of data batch for the generated model
 %           foldername  =   name of the folder for saving data
 %           plotting    =   1 for plotting everything
-%                           0 for no plotting (and no saving any plotting)
+%                           0 for no plotting (not save any figure)
+%           postfix     =   add string postfix to outputfile name
 %
 %   OUTPUT:
 %       No direct output from this function. But the model parameters and
@@ -18,8 +19,8 @@ function generate_eegdata(nbatch,foldername,plotting)
 %
 %   data --> 'foldername' 
 %                |
-%                |-> eegdata.mat   :   contain eeg and source data matrices
-%                |-> model.mat     :   contain model parameters
+%                |-> eegdata_postfix.mat   :   contain eeg and source data matrices
+%                |-> model_postfix.mat     :   contain model parameters
 %                |
 %                --> figure
 %                
@@ -52,18 +53,24 @@ function generate_eegdata(nbatch,foldername,plotting)
 %    along with this program.  If not, see http://www.gnu.org/licenses/.
 
 close all; 
-addpath tools
-addpath tools/matlab_bgl
-addpath tools/export_fig
-addpath TestingCode
-addpath pvo_subspace/subfun
+% addpath tools
+% addpath tools/matlab_bgl
+% addpath tools/export_fig
+% addpath TestingCode
+% addpath pvo_subspace/subfun
 
 % load head model and some miscallaneous data
-load('data/sa')
+if nargin<5
+    load('data/sa')
+end
 load('data/miscdata')
 
 % create directory to store data in
 mkdir(['data/' foldername])
+
+if nargin <4
+    postfix = '';
+end
 
 %%
 % initialize random number generator
@@ -74,15 +81,15 @@ rng_seed = rng;
 truth.dataset = foldername;
 
 % parameter of state-space model of sources REVISE
-n_source = 10; %(m in the document)
-n_source_active = 5;
+n_source = 80; %(m in the document)
+n_source_active = 30;
 PARAMETER.m = n_source;                   % #SOURCES
 PARAMETER.m_active = n_source_active;            % #Active sources
 PARAMETER.m_inactive = PARAMETER.m-PARAMETER.m_active;  % #Inactive sources (Redundant)
 PARAMETER.lag = 2;                  % #lag
-PARAMETER.nbutter = 2;              % order of Butterworth bandpass filter
+PARAMETER.nbutter = 3;              % order of Butterworth bandpass filter
 PARAMETER.density = 0.8;            % Density of GC matrix
-PARAMETER.group_density = 0.8;
+PARAMETER.group_density = 0.9;
 PARAMETER.sigma_ar = 1*eye(PARAMETER.m_active);       % VAR process noise
 PARAMETER.rng_seed = rng_seed;      %  save seed of the random number generator
 
@@ -91,7 +98,7 @@ EEG_M = length(sa.EEG_clab_electrodes);
 PARAMETER.r = EEG_M;
 
 % number of cluster of sources (must be less than n_source)
-n_source_cluster = 3;
+n_source_cluster = 4;
 PARAMETER.n_source_cluster = n_source_cluster;
 
 % spatial standard deviation of the sources (along cortical manifold) in mm
@@ -142,8 +149,10 @@ end
 % generate source time series restricted to band of interest with the
 % parameter of the model
 
-sys = gengcss_eeg(PARAMETER,truth.bandpass,fs);  % system of source dynamics
-
+sys = gengcss_eeg(PARAMETER,truth.bandpass,fs,0);  % system of source dynamics
+imagesc(sys.F0)
+axis('square')
+pause(0.1)
 %% spatial structure definition
 
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
@@ -212,8 +221,8 @@ factorC = zeros(nbatch,1);
 %=================== start batch generation loop ==========================
 
 for ibatch = 1:nbatch
-
 %% Sources data generation
+fprintf('Generating batch number: %d \n',ibatch)
 
 % generate sources data from the source system and corrupt inactive sources with pink noise
 [truth.sources(:,:,ibatch),sys.PARAMETER.pinknoise_cov(:,:,ibatch),factorC(ibatch)] = getdatass_pinknoise(sys,N,truth.snr);
@@ -417,11 +426,13 @@ end
 eegdata = struct('EEG_data',EEG_data,'source_data',truth.sources,'sampling_frequency',fs,'snr_source',truth.snr,...
                  'snr_sensor',truth.snr_sensor);
              
-model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
-                'F0',sys.F0,'F',sys.F);
+% model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
+%                 'F0',sys.F0,'F',sys.F);
+model = sys;
+model.truth=truth;
 
-save(['data/',foldername,'/eegdata'], 'eegdata');
-save(['data/' foldername '/model'], 'model');
+save(['data/',foldername,'/eegdata_', postfix], 'eegdata');
+save(['data/' foldername '/model_',postfix], 'model');
 
 end
 %================== End function ==========================================
