@@ -11,6 +11,8 @@ function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
 %           plotting    =   1 for plotting everything
 %                           0 for no plotting (not save any figure)
 %           postfix     =   add string postfix to outputfile name
+%           sa          =   (*******ADD THIS*******)
+%           
 %
 %   OUTPUT:
 %       No direct output from this function. But the model parameters and
@@ -140,19 +142,20 @@ end
 
 % loop over datasets to be generated
 
-% create folder for dataset idata
-%   mkdir(['data/' foldername '/EEG/dataset_' num2str(idata)])
-%   mkdir(['data/' foldername '/truth/dataset_' num2str(idata)]
+% create folder for dataset ibatch
+%   mkdir(['data/' foldername '/EEG/dataset_' num2str(ibatch)])
+%   mkdir(['data/' foldername '/truth/dataset_' num2str(ibatch)]
 
 %% Model generation
 
 % generate source time series restricted to band of interest with the
 % parameter of the model
 
-sys = gengcss_eeg(PARAMETER,truth.bandpass,fs,0);  % system of source dynamics
-imagesc(sys.F0)
-axis('square')
-pause(0.1)
+sys = gengcss_eeg(PARAMETER,truth.bandpass,fs);  % system of source dynamics
+% imagesc(sys.F0)
+% axis('square')
+% pause(0.1)
+
 %% spatial structure definition
 
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
@@ -270,9 +273,9 @@ EEG_baseline_data = truth.snr_sensor*EEG_brain_noise + (1-truth.snr_sensor)*EEG_
 EEG_baseline_data = filtfilt(b_high, a_high, EEG_baseline_data')';
 
 %% Plotting
-idata = 1;
-if plotting && ibatch == 1
-
+% if plotting && ibatch == 1
+if plotting
+    
 load('tools/cm17');
 
 % freq_inds = (truth.bandpass(1)*2+1):(truth.bandpass(2)*2+1); 
@@ -285,25 +288,25 @@ k = randperm(n_source); k = k(1); % source index
 % k-source amplitude distribution
 ma = max(truth.source_amp(:, k));
 allplots_cortex(sa, truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, k), ...
-    [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/source1']);
+    [0 ma], cm17a, 'A.U.', 1, ['data/' foldername '/figures/dataset' num2str(ibatch) '/source1']);
           
 % all source amplitude distributions
 ma = max(sum(truth.source_amp, 2));
 allplots_cortex(sa, sum(truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, :), 2), ...
-    [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/sources']);
+    [0 ma], cm17a, 'A.U.', 1, ['data/' foldername '/figures/dataset' num2str(ibatch) '/sources']);
 
 % dipole patterns
 ma = max(abs(truth.EEG_field_pat(:, k)));
-allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_pat1'], sa.EEG_locs_3D(:, 1:3));
+allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_pat' num2str(k)], sa.EEG_locs_3D(:, 1:3));
     
-ma = max(abs(sum(truth.field_pat, 2)));
-allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/pats']);
+% ma = max(abs(sum(truth.field_pat, 2)));
+% allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['data/' foldername '/figures/dataset' num2str(ibatch) '/pats']);
 
-export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_psd'], '-r150', '-a2');
+export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_psd'], '-r150', '-a2');
 
 % plot svd spectrum
-P1 = svd(EEG_data);      
-Pb = svd(EEG_baseline_data);
+P1 = svd(EEG_data(:,:,ibatch));      
+Pb = svd(EEG_baseline_data(:,:));
 figure; subplot(3, 1, [1 2])
 plot(P1, 'linewidth', 2)
 hold on    
@@ -315,17 +318,17 @@ title('EEG')
 grid on
 legend(truth.dataset, 'Baseline')
 axis tight
-export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '-r150', '-a2');
+export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_svd'], '-r150', '-a2');
 
 
 % plot power spectrum and EEG data compare to baseline
 
     figure;
     
-    no = sqrt(sum(EEG_data.^2, 2));
+    no = sqrt(sum(EEG_data(:,:,ibatch).^2, 2));
     [~, in_no] = max(no); % choosing channel with maximum norm eeg (===REVISE===)
-    ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    ss = std(EEG_data(in_no, :, ibatch));
+    [P1, f1] = pwelch(EEG_data(in_no, :, ibatch)/ss, hanning(fs), [], fs, fs);     
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     
     subplot(3, 3, [1, 4])
@@ -343,8 +346,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
 
     % plot normalize time series
     subplot(3, 3, 7)
-    ss = std(EEG_data(in_no, 1:1000));
-    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
+    ss = std(EEG_data(in_no, 1:1000, ibatch));
+    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000, ibatch)/ss)
     hold on     
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
@@ -365,8 +368,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     no_temp(in_no) = -inf;
     [~, in_no] = max(no_temp); % choosing channel with maximum norm eeg (===REVISE===)
     disp(in_no)
-    ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    ss = std(EEG_data(in_no, :, ibatch));
+    [P1, f1] = pwelch(EEG_data(in_no, :, ibatch)/ss, hanning(fs), [], fs, fs);     
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     
     subplot(3, 3, [i+1, i+4])
@@ -384,8 +387,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
 
     % plot normalize time series
     subplot(3, 3, i+7)
-    ss = std(EEG_data(in_no, 1:1000));
-    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
+    ss = std(EEG_data(in_no, 1:1000, ibatch));
+    plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000, ibatch)/ss)
     hold on     
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
@@ -394,6 +397,8 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     grid on
     legend(truth.dataset, 'Baseline')
     axis tight
+    
+    export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/EEG_timeseries_spectrum'], '-r150', '-a2');
         
     end
     
@@ -401,8 +406,7 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     
     figure;
     k = randi(length(sys.PARAMETER.ind_active));
-    [Psource, fsource] = pwelch(truth.sources(sys.PARAMETER.ind_active(k), :)/ss, hanning(fs), [], fs, fs);
-%     [Psource, fsource] = pwelch(testdata/ss, hanning(fs), [], fs, fs);
+    [Psource, fsource] = pwelch(truth.sources(sys.PARAMETER.ind_active(k), :, ibatch)/ss, hanning(fs), [], fs, fs);
     subplot(2, 1, [1, 2])
     semilogy(fsource, Psource, 'r', 'linewidth', 2)
     set(gca, 'fontsize', 18)
@@ -414,9 +418,11 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     axis tight
     xlim([0 45])
 
-    export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_timeseries'], '-r150', '-a2');
+    export_fig(['data/' foldername '/figures/dataset' num2str(ibatch) '/source' num2str(k) 'spectrum'], '-r150', '-a2');
 
 end
+
+close all;
 
 end
 %================== End batch generation loop =============================
