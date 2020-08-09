@@ -60,7 +60,7 @@ function [FR,Sigma] = calgcss(A,C,W,V,S)
     %---------------------------- Reduced model ---------------------------
     %------------- solve RICCATI for all reduced model --------------------
     [mm,~] = size(C);           % size C after remove zeros
-    for j=1:mm                  % reduce jth parameter
+    parfor j=1:mm                  % reduce jth parameter
         ind = 1:mm;
         Creduce = C;
         Vreduce = V;
@@ -71,9 +71,13 @@ function [FR,Sigma] = calgcss(A,C,W,V,S)
         Sreduce(:,j) = [];      % reduce jth column of S
         [Preduce,~,~] = dare(A',Creduce',W,Vreduce,Sreduce); 
         SigmaR = Creduce*Preduce*Creduce'+Vreduce;
-        diagSigmaR = diag(SigmaR);      % collect Sigma_ii of reduced model
+%         diagSigmaR = diag(SigmaR);      % collect Sigma_ii of reduced model
         ind(j) = [];                    
-        FRr(ind,j) = log(diagSigmaR./diagSigma(ind));
+        tmpvar{j} = ind;
+        tmpvar2{j} = diag(SigmaR);
+    end
+    for j=1:mm
+        FRr(tmpvar{j},j) = log(tmpvar2{j}./diagSigma(tmpvar{j}));
     end
     FR = zeros(m,m); FR(rnz,rnz) = FRr;
 

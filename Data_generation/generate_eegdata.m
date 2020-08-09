@@ -155,6 +155,7 @@ sys = gengcss_eeg(PARAMETER,truth.bandpass,fs);  % system of source dynamics
 % imagesc(sys.F0)
 % axis('square')
 % pause(0.1)
+
 %% spatial structure definition
 
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
@@ -434,9 +435,9 @@ eegdata = struct('EEG_data',EEG_data,'source_data',truth.sources,'sampling_frequ
 % model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
 %                 'F0',sys.F0,'F',sys.F);
 model = sys;
-model.truth = truth;
+model.truth=truth;
 
-save(['data/' foldername '/eegdata_', postfix], 'eegdata');
+save(['data/',foldername,'/eegdata_', postfix], 'eegdata');
 save(['data/' foldername '/model_',postfix], 'model');
 
 end

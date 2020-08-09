@@ -22,12 +22,15 @@ function [C_out] = Solve_Lpq_regression(L,W,V,GridSize,IsFine)
 AA = L'*V*W'; % For alpha_max computation
 alpha_max = max(norms(AA,2,2));
 Lipschitz = norm(L,2)^2*norm(W,2)^2;
+FineGrid_Start = -6.5;
+FineGrid_end = -6;
+
 if IsFine
-    FineGrid = logspace(-8,-5,26)*alpha_max;
+    FineGrid = logspace(FineGrid_Start,FineGrid_end,26)*alpha_max;
     FineGrid(end) = [];
-    alpha = [0,FineGrid,logspace(-5,0,GridSize-1)*alpha_max];
+    alpha = [0,FineGrid,logspace(FineGrid_end,0,GridSize-1)*alpha_max];
 else
-    alpha = [0,logspace(-5,0,GridSize-1)*alpha_max];
+    alpha = [0,logspace(FineGrid_end,0,GridSize-1)*alpha_max];
 end
 
 for ii=1:length(alpha)

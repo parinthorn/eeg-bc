@@ -1,2 +1,2 @@
 # eeg-bc
-This repository is for control the code version of JSS team
+This repository is for code version control for JSS team
