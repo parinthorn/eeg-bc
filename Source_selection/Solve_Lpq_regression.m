@@ -1,4 +1,4 @@
-function [C_out] = Solve_Lpq_regression(L,W,V,GridSize,IsFine)
+function [M] = Solve_Lpq_regression(L,W,V,GridSize,IsFine)
 % This function iteratively solve the problem
 %           \argmin_{C_Lpq} (1/2)||V-L*C_Lpq*W||_F^2 + alpha*||C_Lpq_{i}^{T}||_(2,1/2) ....(1)
 %           \argmin_{C_L21} (1/2)||V-L*C_L21*W||_F^2 + alpha*||C_Lpq_{i}^{T}||_(2,1)   ....(2)
@@ -22,15 +22,12 @@ function [C_out] = Solve_Lpq_regression(L,W,V,GridSize,IsFine)
 AA = L'*V*W'; % For alpha_max computation
 alpha_max = max(norms(AA,2,2));
 Lipschitz = norm(L,2)^2*norm(W,2)^2;
-FineGrid_Start = -6.5;
-FineGrid_end = -6;
-
 if IsFine
-    FineGrid = logspace(FineGrid_Start,FineGrid_end,26)*alpha_max;
+    FineGrid = logspace(-8,-5,26)*alpha_max;
     FineGrid(end) = [];
-    alpha = [0,FineGrid,logspace(FineGrid_end,0,GridSize-1)*alpha_max];
+    alpha = [0,FineGrid,logspace(-5,0,GridSize-1)*alpha_max];
 else
-    alpha = [0,logspace(FineGrid_end,0,GridSize-1)*alpha_max];
+    alpha = [0,logspace(-5,0,GridSize-1)*alpha_max];
 end
 
 for ii=1:length(alpha)
@@ -43,34 +40,30 @@ end
 
 
 end
-for ii=1:length(alpha)
+parfor ii=1:length(alpha)
     fprintf('Estimation progress: %d / %d \n',ii,length(alpha))
     [C_Lpq(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),0.5,0.9/Lipschitz,1,C_L21(:,:,ii));
 end
 for ii=1:length(alpha)
     fprintf('Model selection progress: %d / %d \n',ii,length(alpha))
-[bic_L21(ii),aicc_L21(ii),C_L21_CLS(:,:,ii),flag(ii)] = model_criteria(V,L,C_L21(:,:,ii),W);
-[bic_Lpq(ii),aicc_Lpq(ii),C_Lpq_CLS(:,:,ii),flag(ii)] = model_criteria(V,L,C_Lpq(:,:,ii),W);
-nz_ind_C_L21{ii,1} = find(C_L21(:,1,ii));% BUG
-nz_ind_C_Lpq{ii,1} = find(C_Lpq(:,1,ii)); % BUG
+[bic_L21(ii),aicc_L21(ii),C_L21_CLS(:,:,ii)] = model_criteria(V,L,C_L21(:,:,ii),W);
+[bic_Lpq(ii),aicc_Lpq(ii),C_Lpq_CLS(:,:,ii)] = model_criteria(V,L,C_Lpq(:,:,ii),W);
+nz_ind_C_L21{ii,1} = find(sum(C_L21(:,:,ii).^2,2));
+nz_ind_C_Lpq{ii,1} = find(sum(C_Lpq(:,:,ii).^2,2));
 end
-[~,bic_ind_Lpq] = min(bic_Lpq);
-% C_Lpq_bic = C_Lpq(:,:,bic_ind_Lpq);
-
-[~,bic_ind_L21] = min(bic_L21);
-% C_L21_bic = C_L21(:,:,bic_ind_L21);
+[~,ind_chosen_Lpq.bic] = min(bic_Lpq);
+[~,ind_chosen_L21.bic] = min(bic_L21);
+[~,ind_chosen_Lpq.aicc] = min(aicc_Lpq);
+[~,ind_chosen_L21.aicc] = min(aicc_L21);
 
 %[C_Lpq_bic,C_L21_bic,C_Lpq,C_L21,bic_ind_Lpq,bic_ind_L21,alpha]
-C_out.C_Lpq = C_Lpq;
-% C_out.C_Lpq_bic = C_Lpq_bic;
-% C_out.C_L21_bic = C_L21_bic;
-C_out.C_L21 = C_L21;
-C_out.bic_ind_Lpq = bic_ind_Lpq;
-C_out.bic_ind_L21 = bic_ind_L21;
-C_out.alpha = alpha;
-C_out.C_L21_CLS = C_L21_CLS; % Constrained LS L21
-C_out.C_Lpq_CLS = C_Lpq_CLS;% Constrained LS Lpq
-C_out.nz_ind_C_L21=nz_ind_C_L21;
-C_out.nz_ind_C_Lpq=nz_ind_C_Lpq;
-C_out.flag = flag;
+M.C_L21 = C_L21;
+M.C_Lpq = C_Lpq;
+M.C_L21_CLS = C_L21_CLS; % Constrained LS L21
+M.C_Lpq_CLS = C_Lpq_CLS;% Constrained LS Lpq
+M.alpha = alpha;
+M.nz_ind_C_L21=nz_ind_C_L21;
+M.nz_ind_C_Lpq=nz_ind_C_Lpq;
+M.ind_chosen_Lpq = ind_chosen_Lpq;
+M.ind_chosen_L21 = ind_chosen_L21;
 end
