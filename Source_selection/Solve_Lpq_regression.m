@@ -46,10 +46,11 @@ parfor ii=1:length(alpha)
 end
 for ii=1:length(alpha)
     fprintf('Model selection progress: %d / %d \n',ii,length(alpha))
-[bic_L21(ii),aicc_L21(ii),C_L21_CLS(:,:,ii)] = model_criteria(V,L,C_L21(:,:,ii),W);
-[bic_Lpq(ii),aicc_Lpq(ii),C_Lpq_CLS(:,:,ii)] = model_criteria(V,L,C_Lpq(:,:,ii),W);
 nz_ind_C_L21{ii,1} = find(sum(C_L21(:,:,ii).^2,2));
 nz_ind_C_Lpq{ii,1} = find(sum(C_Lpq(:,:,ii).^2,2));
+[bic_L21(ii),aicc_L21(ii),C_L21_CLS(:,:,ii)] = model_criteria(V,L,C_nz_ind_C_L21{ii,1},W);
+[bic_Lpq(ii),aicc_Lpq(ii),C_Lpq_CLS(:,:,ii)] = model_criteria(V,L,nz_ind_C_Lpq{ii,1},W);
+
 end
 [~,ind_chosen_Lpq.bic] = min(bic_Lpq);
 [~,ind_chosen_L21.bic] = min(bic_L21);
