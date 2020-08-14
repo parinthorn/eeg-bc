@@ -1,9 +1,9 @@
-function [bic,aicc,C,flag] = model_criteria(V,L,ind_nz,W)
+function [bic,aicc] = model_criteria(V,L,W,C)
 % This function solve the problem
 %           \argmin_{C} (1/2) ||V-L*C*W||_F^2
 %              subject to C(C_in==0)== 0
 % If there exists many solution, minimum norm solution is provided.
-[C,flag] = constr_LS_eeg(V,L,W,ind_nz);
+
 
 [ny,N] = size(V);
 E = V-L*C*W;
