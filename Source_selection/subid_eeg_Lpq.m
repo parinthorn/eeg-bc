@@ -155,11 +155,13 @@ clear V S WOW
 
 % Determine the order from the principle angle
 if isempty(n)
+  ang = real(acos(ss_out))*180/pi;
   figure(gcf);hold off;subplot;
-  bar([1:l*i],real(acos(ss_out))*180/pi);
+  bar(1:l*i,ang);
   title('Principal Angles');
   ylabel('degrees');
   xlabel('Order');
+  
   n = 0;
   while (n < 1) || (n > l*i-1)
     n = input('      System order ? ');
@@ -168,6 +170,17 @@ if isempty(n)
   if ~sil
     disp(' ')
   end
+end
+
+% automatically choose order from the last peak ind - 1/10 of the ind
+if n == -1
+  ang = real(acos(ss_out))*180/pi;
+  angdiff = ang;
+  angdiff(2:end) = angdiff(2:end) - angdiff(1:end-1);
+  
+  angdiff(find(angdiff < 1.5)) = 0;
+  [~,peak_ind] = findpeaks(angdiff);
+  n = peak_ind(end) - floor(peak_ind(end)/10);
 end
 
 U1 = U(:,1:n); 				% Determine U1
@@ -236,7 +249,7 @@ for kk = 1:nc
     ind_C_Lpq{kk} = find(C_norm_Lpq(:,:,kk));
     sumlength_Lpq(kk) = length(setdiff(ind_C_Lpq{kk},ind_Ctrue)) + length(setdiff(ind_Ctrue,ind_C_Lpq{kk}));
 end
-[~,C_out.ind_chosen_Lpq] = min(sumlength_Lpq);
+[~,C_out.ind_chosen_Lpq.cheated] = min(sumlength_Lpq);
 
 C_norm_L21 = sqrt(sum(C_out.C_L21.^2,2));
 ind_C_L21 = cell(nc,1);
@@ -245,112 +258,119 @@ for kk = 1:nc
     ind_C_L21{kk} = find(C_norm_L21(:,:,kk));
     sumlength_L21(kk) = length(setdiff(ind_C_L21{kk},ind_Ctrue)) + length(setdiff(ind_Ctrue,ind_C_L21{kk}));
 end
-[~,C_out.ind_chosen_L21] = min(sumlength_L21);
+[~,C_out.ind_chosen_L21.cheated] = min(sumlength_L21);
 
-% C = C_Lpq(:,:,ind_chosen);
-% C = C_Lpq(:,:,ind_chosen);
-% C_CLS = C_Lpq_CLS(:,:,ind_chosen);
-C_out.ind_nonzero = ind_C_Lpq(C_out.ind_chosen_Lpq);
-% ind_chosen = ind_C{ind_chosen};
-
-H_Lpq = L*C_out.C_Lpq(:,:,C_out.ind_chosen_Lpq);
-H_Lpq_CLS = L*C_out.C_Lpq_CLS(:,:,C_out.ind_chosen_Lpq);
-
-H_L21 = L*C_out.C_L21(:,:,C_out.ind_chosen_L21);
-H_L21_CLS = L*C_out.C_L21_CLS(:,:,C_out.ind_chosen_L21);
-
-sys_est.A = A;
-sys_est.H_Lpq = H_Lpq;
-sys_est.H_L21 = H_L21;
 
 %==========================================================================
-res_Lpq = [LhsA;LhsC] - [A;H_Lpq]*Rhs; 			% Residuals
-res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS]*Rhs;
-
-res_L21 = [LhsA;LhsC] - [A;H_L21]*Rhs; 			
-res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS]*Rhs;
+% res_Lpq = [LhsA;LhsC] - [A;H_Lpq]*Rhs; 			% Residuals
+% res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS]*Rhs;
+% 
+% res_L21 = [LhsA;LhsC] - [A;H_L21]*Rhs; 			
+% res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS]*Rhs;
 
 % **************************************
 %               STEP 7 
 % **************************************
 
-if (norm(res_Lpq) > 1e-10)
-    % Determine QSR from the residuals
-    if ~sil
-        disp(['      Computing ... System matrices G,L0 (Order ',num2str(n),')']);
-    end
-    % Determine the residuals
-    cov_res = res_Lpq*res_Lpq'; 			% Covariance
-    Q = cov_res(1:n,1:n);S = cov_res(1:n,n+1:n+l);R_cov = cov_res(n+1:n+l,n+1:n+l);
+H_Lpq = zeros(l,n,nc);
+H_Lpq_CLS = zeros(l,n,nc);
+H_L21 = zeros(l,n,nc);
+H_L21_CLS = zeros(l,n,nc);
 
-    sig = dlyap(A,Q);
-    G = A*sig*H_Lpq' + S;
-    L0 = H_Lpq*sig*H_Lpq' + R_cov;
+W_Lpq = zeros(n,n,nc);
+W_Lpq_CLS = zeros(n,n,nc);
+S_Lpq = zeros(n,l,nc);
+S_Lpq_CLS = zeros(n,l,nc);
+E_Lpq = zeros(l,l,nc);
+E_Lpq_CLS = zeros(l,l,nc);
 
-    % Determine K and Ro
-    if ~sil
-        disp('      Computing ... Riccati solution')
-    end
-
-%     [P,~,~] = idare(A',H',[],-L0,-G);
-%     Ro = L0 - H*P*H';
-%     K = (G - A*P*H')*(Ro\eye(size(Ro)));
-    [K,Ro] = gl2kr(A,G,H_Lpq,L0);
+W_L21 = zeros(n,n,nc);
+W_L21_CLS = zeros(n,n,nc);
+S_L21 = zeros(n,l,nc);
+S_L21_CLS = zeros(n,l,nc);
+E_L21 = zeros(l,l,nc);
+E_L21_CLS = zeros(l,l,nc);
+for i = 1:nc
     
-else
-    Ro = [];
-    K = [];
+    H_Lpq(:,:,i) = L*C_out.C_Lpq(:,:,i);
+    H_Lpq_CLS(:,:,i) = L*C_out.C_Lpq_CLS(:,:,i);
+    H_L21(:,:,i) = L*C_out.C_L21(:,:,i);
+    H_L21_CLS(:,:,i) = L*C_out.C_L21_CLS(:,:,i);
+    
+    res_Lpq = [LhsA;LhsC] - [A;H_Lpq(:,:,i)]*Rhs;          
+    res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS(:,:,i)]*Rhs;
+    res_L21 = [LhsA;LhsC] - [A;H_L21(:,:,i)]*Rhs;          
+    res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS(:,:,i)]*Rhs;
+    
+
+        % Determine QSR from the residuals
+%         if ~sil
+%             disp(['      Computing ... System matrices G,L0 (Order ',num2str(n),')']);
+%         end
+        % Determine the residuals
+	cov_res = res_Lpq*res_Lpq'; 		% Covariance	
+    cov_res_CLS = res_Lpq_CLS*res_Lpq_CLS';
+    
+    W_Lpq(:,:,i) = cov_res(1:n,1:n);
+    S_Lpq(:,:,i) = cov_res(1:n,n+1:n+l);
+    E_Lpq(:,:,i) = cov_res(n+1:n+l,n+1:n+l);
+
+    W_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,1:n);
+    S_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,n+1:n+l);
+    E_Lpq_CLS(:,:,i) = cov_res_CLS(n+1:n+l,n+1:n+l);
+    
+    cov_res = res_L21*res_L21'; 			
+    cov_res_CLS = res_L21_CLS*res_L21_CLS';
+    
+    W_L21(:,:,i) = cov_res(1:n,1:n);
+    S_L21(:,:,i) = cov_res(1:n,n+1:n+l);
+    E_L21(:,:,i) = cov_res(n+1:n+l,n+1:n+l);
+
+    W_L21_CLS(:,:,i) = cov_res_CLS(1:n,1:n);
+    S_L21_CLS(:,:,i) = cov_res_CLS(1:n,n+1:n+l);
+    E_L21_CLS(:,:,i) = cov_res_CLS(n+1:n+l,n+1:n+l);
+    
+%         sig = dlyap(A,Q);
+%         G = A*sig*H_Lpq' + S;
+%         L0 = H_Lpq*sig*H_Lpq' + R_cov;
+% 
+          % Determine K and Ro
+%         if ~sil
+%             disp('      Computing ... Riccati solution')
+%         end
+% 
+%         [P,~,~] = idare(A',H',[],-L0,-G);
+%         Ro = L0 - H*P*H';
+%         K = (G - A*P*H')*(Ro\eye(size(Ro)));
+%         [K,Ro] = gl2kr(A,G,H_Lpq,L0);
+
 end
 
-
-if (norm(res_Lpq_CLS) > 1e-10)
-  % Determine QSR from the residuals
-  if ~sil
-    disp(['      Computing ... System matrices G,L0 (Order ',num2str(n),')']); 
-  end
-  % Determine the residuals
-  cov_res = res_Lpq_CLS*res_Lpq_CLS'; 			% Covariance
-  Q_CLS = cov_res(1:n,1:n);S_CLS = cov_res(1:n,n+1:n+l);R_cov_CLS = cov_res(n+1:n+l,n+1:n+l); 
-  
-  sig = dlyap(A,Q_CLS);
-
-  G_CLS = A*sig*H_Lpq_CLS' + S_CLS;
-  L0_CLS = H_Lpq_CLS*sig*H_Lpq_CLS' + R_cov_CLS;
-  
-  % Determine K and Ro
-  if ~sil
-    disp('      Computing ... Riccati solution')
-  end
-  
-%   [P_CLS,~,~] = idare(A',H',[],-L0,-G);
-%   Ro_CLS = L0 - H*P_CLS*H';
-%   K_CLS = (G - A*P_CLS*H')*(Ro_CLS\eye(size(Ro_CLS)));
-  
-  [K_CLS,Ro_CLS] = gl2kr(A,G_CLS,H_Lpq_CLS,L0_CLS);
-else
-  Ro_CLS = [];
-  K_CLS = [];
-end
-
-if (norm(res_L21) > 1e-10)
-    cov_res = res_L21*res_L21'; 			% Covariance
-    Q_L21 = cov_res(1:n,1:n);S_L21 = cov_res(1:n,n+1:n+l);R_cov_L21 = cov_res(n+1:n+l,n+1:n+l);
-end
-
-
+sys_est.A = A;
+sys_est.H_Lpq = H_Lpq;
+sys_est.H_Lpq_CLS = H_Lpq_CLS;
+sys_est.H_L21 = H_L21;
+sys_est.H_L21_CLS = H_L21_CLS;
   
 %   K,K_CLS,C_out,Ro,Ro_CLS,Q,Q_CLS,R,R_CLS,S,S_CLS,ss_out
-  C_out.K = K;
-  C_out.K_CLS = K_CLS;
-  C_out.Ro = Ro;
-  C_out.Ro_CLS = Ro_CLS;
-  C_out.Q = Q;
-  C_out.Q_CLS = Q_CLS;
-  C_out.Q_L21 = Q_L21;
-  C_out.R_cov = R_cov;
-  C_out.R_cov_CLS = R_cov_CLS;
-  C_out.R_cov_L21 = R_cov_L21;
-  C_out.S = R_cov;
-  C_out.S_CLS = R_cov_CLS;
-  C_out.S_L21 = S_L21;
+% C_out.K = K;
+% C_out.K_CLS = K_CLS;
+% C_out.Ro = Ro;
+% C_out.Ro_CLS = Ro_CLS;
+
+C_out.W_Lpq = W_Lpq;
+C_out.W_Lpq_CLS = W_Lpq_CLS;
+C_out.W_L21 = W_L21;
+C_out.W_L21_CLS = W_L21_CLS;
+
+C_out.S_Lpq = S_Lpq;
+C_out.S_Lpq_CLS = S_Lpq_CLS;
+C_out.S_L21 = S_L21;
+C_out.S_L21_CLS = S_L21_CLS;
+
+C_out.E_Lpq = E_Lpq;
+C_out.E_Lpq_CLS = E_Lpq_CLS;
+C_out.E_L21 = E_L21;
+C_out.E_L21_CLS = E_L21_CLS;
+
 end
