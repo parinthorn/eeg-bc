@@ -1,4 +1,4 @@
-function [C,flag] = constr_LS_eeg(V,L,W,C_in)
+function [C,flag] = constr_LS_eeg(V,L,W,nz_ind)
 % This program solve constrained least square (flag=0)
 %       min_C ||V-LCW||_F
 %       subject to C(C_in==0)==0
@@ -6,8 +6,9 @@ function [C,flag] = constr_LS_eeg(V,L,W,C_in)
 % If Constrained LS is not well-defined, return regularized constrained LS
 % solution flag = -1.
 [m,n] = size(C_in);
+m = size(L,2);
+n = size(W,1);
 C= zeros(m,n);
-nz_ind = find(norms(C_in,2,2));
 Lnz = L(:,nz_ind);
 if length(nz_ind)>= size(L,1)
     %     C(nz_ind,:) = Lnz'*(Lnz*Lnz'\V/W); %minimum norm solution, when solution is not unique
