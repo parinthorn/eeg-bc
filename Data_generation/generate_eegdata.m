@@ -1,4 +1,4 @@
-function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
+function generate_eegdata(nbatch,foldername,plotting,postfix,sa,is_pink)
 %
 %   Jitkomut Songsiri, Parinthorn Manomaisaowapak, Anawat Nartkulpat, 2020
 %
@@ -17,13 +17,13 @@ function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
 %       EEG data will be saved in the 'data' folder with the directory and
 %       files described as below;
 %
-%   data --> 'foldername' 
+%   data --> 'foldername'
 %                |
 %                |-> eegdata_postfix.mat   :   contain eeg and source data matrices
 %                |-> model_postfix.mat     :   contain model parameters
 %                |
 %                --> figure
-%                
+%
 %
 %==========================================================================
 %
@@ -52,7 +52,7 @@ function generate_eegdata(nbatch,foldername,plotting,postfix,sa)
 %    You should have received a copy of the GNU General Public License
 %    along with this program.  If not, see http://www.gnu.org/licenses/.
 
-close all; 
+close all;
 % addpath tools
 % addpath tools/matlab_bgl
 % addpath tools/export_fig
@@ -60,6 +60,9 @@ close all;
 % addpath pvo_subspace/subfun
 
 % load head model and some miscallaneous data
+if nargin<6
+    is_pink = 1;
+end
 if nargin<5
     load('data/sa')
 end
@@ -82,7 +85,7 @@ truth.dataset = foldername;
 
 % parameter of state-space model of sources REVISE
 n_source = 50; %(m in the document)
-n_source_active = 20;
+n_source_active = 8;
 PARAMETER.m = n_source;                   % #SOURCES
 PARAMETER.m_active = n_source_active;            % #Active sources
 PARAMETER.m_inactive = PARAMETER.m-PARAMETER.m_active;  % #Inactive sources (Redundant)
@@ -92,7 +95,7 @@ PARAMETER.density = 0.8;            % Density of GC matrix
 PARAMETER.group_density = 0.9;
 PARAMETER.sigma_ar = 1*eye(PARAMETER.m_active);       % VAR process noise
 PARAMETER.rng_seed = rng_seed;      %  save seed of the random number generator
-
+% PARAMETER.is_pink = is_pink;
 % number of electrodes
 EEG_M = length(sa.EEG_clab_electrodes);
 PARAMETER.r = EEG_M;
@@ -102,7 +105,7 @@ n_source_cluster = 4;
 PARAMETER.n_source_cluster = n_source_cluster;
 
 % spatial standard deviation of the sources (along cortical manifold) in mm
-truth.sigma_range = [10 40];
+truth.sigma_range = [10 10];
 
 % SNR range to sample from
 truth.snr_range = [0.1 0.9];
@@ -122,7 +125,7 @@ fs = 100;
 PARAMETER.fs = fs;
 
 % length of recording in sec
-truth.len = 3*60; 
+truth.len = 3*60;
 
 % resulting number of samples
 N = fs*truth.len;
@@ -158,8 +161,9 @@ pause(0.1)
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
 
 % sample source rois
-ind_roi_cluster = randperm(8); ind_roi_cluster(n_source_cluster+1:end) = []; % assign the ROI number to each cluster of source (size = n_source_cluster x 1)
-
+% ind_roi_cluster = randperm(8); ind_roi_cluster(n_source_cluster+1:end) = []; % assign the ROI number to each cluster of source (size = n_source_cluster x 1)
+ind_roi_cluster = [1 3 5 7]; % shallow
+% ind_roi_cluster = [2 4 6 8]; % deep
 % assign ROI to each source. Sources in the same cluster are assigned to the same ROI
 truth.in_roi = zeros(1,n_source);
 for i = 1:n_source_cluster-1
@@ -191,7 +195,7 @@ end
 % set activity outside of source octant to zero %%%==========================================
 for i = 1:n_source
     % index that is not in INDS_ROI_OUTER_2K
-    ind_tmp = setdiff(1:size(truth.source_amp,1), inds_roi_outer_2K{ truth.in_roi(i) });   
+    ind_tmp = setdiff(1:size(truth.source_amp,1), inds_roi_outer_2K{ truth.in_roi(i) });
     truth.source_amp( ind_tmp, i) = 0;
 end
 
@@ -233,12 +237,12 @@ for ibatch = 1:nbatch
 fprintf('Generating batch number: %d \n',ibatch)
 
 % generate sources data from the source system and corrupt inactive sources with pink noise
-[truth.sources(:,:,ibatch),sys.PARAMETER.pinknoise_cov(:,:,ibatch),factorC(ibatch)] = getdatass_pinknoise(sys,N,truth.snr);
+[truth.sources(:,:,ibatch),sys.PARAMETER.pinknoise_cov(:,:,ibatch),factorC(ibatch)] = getdatass_pinknoise(sys,N,truth.snr,is_pink);
 
 % recalculate F using the sample covariance of the generated pink noise
 sys.F(:,:,ibatch) = calgcss(sys.source_model0.A,sys.source_model0.C,sys.PARAMETER.sigma_w,sys.PARAMETER.pinknoise_cov(:,:,ibatch));
 
-sys.source_model{ibatch} = sys.source_model0; 
+sys.source_model{ibatch} = sys.source_model0;
 sys.source_model{ibatch}.C = sys.source_model{ibatch}.C*factorC(ibatch);
 
 %% time series generation
@@ -257,7 +261,7 @@ EEG_data(:,:,ibatch) = truth.snr_sensor*EEG_brain_signal_noise + (1-truth.snr_se
 % apply high-pass filter
 EEG_data(:,:,ibatch) = filtfilt(b_high, a_high, EEG_data(:,:,ibatch)')';
 
-%% generate pseudo-baseline EEG/MEG without sources 
+%% generate pseudo-baseline EEG/MEG without sources
 % everything as above except that no signal is added at all
 
 % JSS baseline equation
@@ -265,7 +269,7 @@ pn = dsp.ColoredNoise(1,N,n_source); purenoise = pn()'; % pursenoise is n_source
 purenoise(sys.PARAMETER.ind_active,:)  = 0;   % assume that there is no pink noise at active source channels
 if norm(purenoise,'fro') > 0
 EEG_brain_noise = truth.EEG_field_pat*purenoise;
-EEG_brain_noise = EEG_brain_noise/norm(EEG_brain_noise,'fro');   
+EEG_brain_noise = EEG_brain_noise/norm(EEG_brain_noise,'fro');
 else
 EEG_brain_noise = truth.EEG_field_pat*purenoise;
 end
@@ -274,7 +278,7 @@ end
 EEG_sensor_noise = randn(EEG_M, N);
 EEG_sensor_noise = EEG_sensor_noise ./ norm(EEG_sensor_noise, 'fro');
 
-EEG_baseline_data = truth.snr_sensor*EEG_brain_noise + (1-truth.snr_sensor)*EEG_sensor_noise;  
+EEG_baseline_data = truth.snr_sensor*EEG_brain_noise + (1-truth.snr_sensor)*EEG_sensor_noise;
 EEG_baseline_data = filtfilt(b_high, a_high, EEG_baseline_data')';
 
 %% Plotting
@@ -283,18 +287,18 @@ if plotting && ibatch == 1
 
 load('tools/cm17');
 
-% freq_inds = (truth.bandpass(1)*2+1):(truth.bandpass(2)*2+1); 
+% freq_inds = (truth.bandpass(1)*2+1):(truth.bandpass(2)*2+1);
 % [psi, stdpsi] = data2psi2(truth.sources_int', fs*2, fs*4, freq_inds);
 % figure; imagesc(psi./stdpsi); colorbar
 % max(max(abs(psi./stdpsi)))
 
 k = randperm(n_source); k = k(1); % source index
-    
+
 % k-source amplitude distribution
 ma = max(truth.source_amp(:, k));
 allplots_cortex(sa, truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, k), ...
     [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/source1']);
-          
+
 % all source amplitude distributions
 ma = max(sum(truth.source_amp, 2));
 allplots_cortex(sa, sum(truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, :), 2), ...
@@ -303,18 +307,18 @@ allplots_cortex(sa, sum(truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, :), 2
 % dipole patterns
 ma = max(abs(truth.EEG_field_pat(:, k)));
 allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_pat1'], sa.EEG_locs_3D(:, 1:3));
-    
+
 ma = max(abs(sum(truth.field_pat, 2)));
 allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/pats']);
 
 export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_psd'], '-r150', '-a2');
 
 % plot svd spectrum
-P1 = svd(EEG_data);      
+P1 = svd(EEG_data);
 Pb = svd(EEG_baseline_data);
 figure; subplot(3, 1, [1 2])
 plot(P1, 'linewidth', 2)
-hold on    
+hold on
 plot(Pb, 'r', 'linewidth', 2)
 set(gca, 'fontsize', 18)
 ylabel('Singular value')
@@ -329,16 +333,16 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
 % plot power spectrum and EEG data compare to baseline
 
     figure;
-    
+
     no = sqrt(sum(EEG_data.^2, 2));
     [~, in_no] = max(no); % choosing channel with maximum norm eeg (===REVISE===)
     ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
-    
+
     subplot(3, 3, [1, 4])
     semilogy(f1, P1, 'linewidth', 2)
-    hold on     
+    hold on
     semilogy(fb, Pb, 'r', 'linewidth', 2)
     set(gca, 'fontsize', 18)
     ylabel('Power [dB]')
@@ -353,7 +357,7 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     subplot(3, 3, 7)
     ss = std(EEG_data(in_no, 1:1000));
     plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
-    hold on     
+    hold on
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
     xlabel('Time [s]')
@@ -361,25 +365,25 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     grid on
     legend(truth.dataset, 'Baseline')
     axis tight
-    
+
     no_temp = no;
     disp(in_no)
-    
+
     % plot from the 2nd and 3rd largest index in 'no'
-    
+
     for i = 1:2
-    
+
     % plot power spectrum
     no_temp(in_no) = -inf;
     [~, in_no] = max(no_temp); % choosing channel with maximum norm eeg (===REVISE===)
     disp(in_no)
     ss = std(EEG_data(in_no, :));
-    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);     
+    [P1, f1] = pwelch(EEG_data(in_no, :)/ss, hanning(fs), [], fs, fs);
     [Pb, fb] = pwelch(EEG_baseline_data(in_no, :)/ss, hanning(fs), [], fs, fs);
-    
+
     subplot(3, 3, [i+1, i+4])
     semilogy(f1, P1, 'linewidth', 2)
-    hold on     
+    hold on
     semilogy(fb, Pb, 'r', 'linewidth', 2)
     set(gca, 'fontsize', 18)
     ylabel('Power [dB]')
@@ -394,7 +398,7 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     subplot(3, 3, i+7)
     ss = std(EEG_data(in_no, 1:1000));
     plot((1:1000)/fs, 10 + EEG_data(in_no, 1:1000)/ss)
-    hold on     
+    hold on
     plot((1:1000)/fs, EEG_baseline_data(in_no, 1:1000)/ss, 'r')
     set(gca, 'fontsize', 10, 'ytick', [])
     xlabel('Time [s]')
@@ -402,11 +406,11 @@ export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_svd'], '
     grid on
     legend(truth.dataset, 'Baseline')
     axis tight
-        
+
     end
-    
+
     % plot source spectrum from source data (chossing source randomly)
-    
+
     figure;
     k = randi(length(sys.PARAMETER.ind_active));
     [Psource, fsource] = pwelch(truth.sources(sys.PARAMETER.ind_active(k), :)/ss, hanning(fs), [], fs, fs);
@@ -432,8 +436,8 @@ end
 %% Saving data
 
 eegdata = struct('EEG_data',EEG_data,'source_data',truth.sources,'sampling_frequency',fs,'snr_source',truth.snr,...
-                 'snr_sensor',truth.snr_sensor);
-             
+                 'snr_sensor',truth.snr_sensor,'is_pink',is_pink);
+
 % model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
 %                 'F0',sys.F0,'F',sys.F);
 model = sys;

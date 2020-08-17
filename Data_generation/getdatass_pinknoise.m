@@ -19,17 +19,17 @@
 %           perturball  =   1 for perturbing all channel with pink noise
 %                           0 for perturbing only inactive channel
 %	OUTPUTS
-%           data        =   time series data generated from system. 
+%           data        =   time series data generated from system.
 %                           data(:,:,j) represents time series data at
 %                           trial j.
 %           factorC     =   a factor to multiply to C in order to correct
 %                           the result from multiplying SNR dividing by
 %                           norm
 %
-%========================================================================== 
-function [signal_noise,pinknoise_cov,factorC] = getdatass_pinknoise(system,timelength,SNR,perturball)
+%==========================================================================
+function [signal_noise,pinknoise_cov,factorC] = getdatass_pinknoise(system,timelength,SNR,is_pink,perturball)
 
-if nargin < 4
+if nargin < 5
     perturball = 0;
 end
 
@@ -47,7 +47,9 @@ signal_sim = lsim(system.source_model0,noise_w,t,z_init);
 signal_sim = signal_sim(101:end,:)';
 
 pn = dsp.ColoredNoise('pink',timelength,m); pinknoise = pn()'; % dimension = #source x timepoint
-
+if ~is_pink
+    pinknoise = randn(m,timelength);
+end
 if ~perturball
     pinknoise(ind_active,:) = 0;
 end
@@ -62,7 +64,7 @@ if SNR < 1 && norm(pinknoise,'Fro') > 0
     signal_noise = signal_noise + pn_normalized;
     % calculate variance for each channel of pink noise assuming diagnal
     % some elements in the diagonal are zeros
-    pinknoise_cov = diag(diag(cov(pn_normalized'))); 
+    pinknoise_cov = diag(diag(cov(pn_normalized')));
 end
 
 end
