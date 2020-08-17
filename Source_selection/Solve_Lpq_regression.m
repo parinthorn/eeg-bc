@@ -53,12 +53,20 @@ nz_ind_C_Lpq{ii,1} = find(sum(C_Lpq(:,:,ii).^2,2));
 
 [bic_L21(ii),aicc_L21(ii)] = model_criteria(V,L,W,C_L21_CLS(:,:,ii));
 [bic_Lpq(ii),aicc_Lpq(ii)] = model_criteria(V,L,W,C_Lpq_CLS(:,:,ii));
+[bic_L21_regLS(ii),aicc_L21_regLS(ii)] = model_criteria(V,L,W,C_L21(:,:,ii));
+[bic_Lpq_regLS(ii),aicc_Lpq_regLS(ii)] = model_criteria(V,L,W,C_Lpq(:,:,ii));
 
 end
 [~,ind_chosen_Lpq.bic] = min(bic_Lpq);
 [~,ind_chosen_L21.bic] = min(bic_L21);
 [~,ind_chosen_Lpq.aicc] = min(aicc_Lpq);
 [~,ind_chosen_L21.aicc] = min(aicc_L21);
+
+[~,ind_chosen_Lpq.bic_regLS] = min(bic_Lpq_regLS);
+[~,ind_chosen_L21.bic_regLS] = min(bic_L21_regLS);
+[~,ind_chosen_Lpq.aicc_regLS] = min(aicc_Lpq_regLS);
+[~,ind_chosen_L21.aicc_regLS] = min(aicc_L21_regLS);
+
 
 %[C_Lpq_bic,C_L21_bic,C_Lpq,C_L21,bic_ind_Lpq,bic_ind_L21,alpha]
 M.C_L21 = C_L21;
