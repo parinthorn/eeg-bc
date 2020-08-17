@@ -1,54 +1,54 @@
-% 
-%   General subspace identification 
+%
+%   General subspace identification
 %   -------------------------------
-%   
-%   The algorithm 'subid' identifies deterministic, stochastic 
+%
+%   The algorithm 'subid' identifies deterministic, stochastic
 %   as well as combined state space systems from IO data.
 %
 %           [A,B,C,D,K,R] = subid(y,u,i);
-% 
+%
 %   Inputs:
 %           y: matrix of measured outputs
-%           u: matrix of measured inputs 
+%           u: matrix of measured inputs
 %              for stochastic systems, u = []
 %           i: number of block rows in Hankel matrices
-%              (i * #outputs) is the max. order that can be estimated 
+%              (i * #outputs) is the max. order that can be estimated
 %              Typically: i = 2 * (max order)/(#outputs)
-%           
+%
 %   Outputs:
 %           A,B,C,D,K,R: combined state space system
-%           
-%                  x_{k+1) = A x_k + B u_k + K e_k        
+%
+%                  x_{k+1) = A x_k + B u_k + K e_k
 %                    y_k   = C x_k + D u_k + e_k
 %                 cov(e_k) = R
-%                 
+%
 %           For deterministic systems: K = R = []
 %           For stochastic systems:    B = D = []
 %
 %   Optional:
 %
 %           [A,B,C,D,K,R,AUX,ss] = subid(y,i,n,AUX,W,sil);
-%   
+%
 %           n:    optional order estimate (default [])
 %                 if not given, the user is prompted for the order
 %           AUX:  optional auxilary variable to increase speed (default [])
 %           W:    optional weighting flag
-%                      SV:    Singular values based algorithm 
+%                      SV:    Singular values based algorithm
 %                             (default for systems with input u)
 %                      CVA:   Canonical variate based algorithm
 %                             (default for systems without input u)
 %           ss:   column vector with singular values
 %           sil:  when equal to 1 no text output is generated
-%           
+%
 %   Example:
-%   
+%
 %           [A,B,C,D,K,R,AUX] = subid(y,u,10,2);
 %           for k=3:6
 %              [A,B,C,D] = subid(y,u,10,k,AUX);
 %           end
-%           
+%
 %   Reference:
-%   
+%
 %           Subspace Identification for Linear Systems
 %           Theory - Implementation - Applications
 %           Peter Van Overschee / Bart De Moor
@@ -57,7 +57,7 @@
 %           Combined algorithm:     Figure 4.8 page 131 (robust)
 %
 %   Copyright:
-%   
+%
 %           Peter Van Overschee, December 1995
 %           peter.vanoverschee@esat.kuleuven.ac.be
 %
@@ -67,7 +67,7 @@ function [sys_est,C_out,ss_out,state] = subid_eeg_Lpq(y,L,ind_Ctrue,i,n,sil)
 kappa_cond = 0;
 IsFine = 1;
 warning on
-  
+
 if (nargin < 6);sil = 0;end
 
 if ~sil
@@ -113,7 +113,7 @@ R = R(1:2*i*l,1:2*i*l); 	% Truncate
 
 
 % **************************************
-%               STEP 1 
+%               STEP 1
 % **************************************
 
 % Set up some matrices
@@ -127,11 +127,11 @@ Rp = [R(1:l*i,:)];        % Past outputs
 % numerical conditioning (see algo page 131)
 % And it is needed both for CVA as MOESP
 
-% Ob  = (Rf/Rp)*Rp; which is the same as 
+% Ob  = (Rf/Rp)*Rp; which is the same as
 Ob = [Rf(:,1:l*i),zeros(l*i,l*i)];
 
 % **************************************
-%               STEP 2 
+%               STEP 2
 % **************************************
 
 % Compute the SVD
@@ -150,7 +150,7 @@ clear V S WOW
 
 
 % **************************************
-%               STEP 3 
+%               STEP 3
 % **************************************
 
 % Determine the order from the principle angle
@@ -161,7 +161,7 @@ if isempty(n)
   title('Principal Angles');
   ylabel('degrees');
   xlabel('Order');
-  
+
   n = 0;
   while (n < 1) || (n > l*i-1)
     n = input('      System order ? ');
@@ -177,7 +177,7 @@ if n == -1
   ang = real(acos(ss_out))*180/pi;
   angdiff = ang;
   angdiff(2:end) = angdiff(2:end) - angdiff(1:end-1);
-  
+
   angdiff(find(angdiff < 1.5)) = 0;
   [~,peak_ind] = findpeaks(angdiff);
   n = peak_ind(end) - floor(peak_ind(end)/10);
@@ -187,7 +187,7 @@ U1 = U(:,1:n); 				% Determine U1
 
 
 % **************************************
-%               STEP 4 
+%               STEP 4
 % **************************************
 
 % Determine gam and gamm
@@ -202,21 +202,21 @@ gamm_inv = pinv(gamm); 			% Pseudo inverse
 state = [];
 
 % **************************************
-%               STEP 5 
+%               STEP 5
 % **************************************
 
 % Determine the matrices A and C
-% mydisp(sil,['      Computing ... System matrices A,C (Order ',num2str(n),')']); 
+% mydisp(sil,['      Computing ... System matrices A,C (Order ',num2str(n),')']);
 % RhsT = [  gam_inv*R((2*m+l)*i+1:2*(m+l)*i,1:(2*m+l)*i),zeros(n,l) ; ...
-%     R(m*i+1:2*m*i,1:(2*m+l)*i+l)]; 
-% 
+%     R(m*i+1:2*m*i,1:(2*m+l)*i+l)];
+%
 % LhsT = [        gamm_inv*R((2*m+l)*i+l+1:2*(m+l)*i,1:(2*m+l)*i+l) ; ...
 %     R((2*m+l)*i+1:(2*m+l)*i+l,1:(2*m+l)*i+l)];
 
 %==========================================================================
 % Seperately compute A by least square and C by sparse row method
 
-Rhs = [  gam_inv*R(l*i+1:2*l*i,1:l*i),zeros(n,l) ]; 
+Rhs = [  gam_inv*R(l*i+1:2*l*i,1:l*i),zeros(n,l) ];
 
 LhsA = gamm_inv*R(l*i+l+1:2*l*i,1:l*i+l);
 A = LhsA/Rhs;
@@ -231,12 +231,12 @@ if kappa_cond
     Timepoints = 1000;
     C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
     [C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,C_out.alpha,n,C_out.C_Lpq);
-    
+
     [C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,C_out.alpha,n,C_out.C_L21);
 else
     [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
 end
-
+C_out.C_cheated = constr_LS_eeg(LhsC,L,Rhs,ind_Ctrue);
 [~,~,nc] = size(C_out.C_Lpq);
 
 % Choose C by the first C such that setdiff(ind_C_Lpq,ind_Ctrue) +
@@ -264,12 +264,12 @@ end
 %==========================================================================
 % res_Lpq = [LhsA;LhsC] - [A;H_Lpq]*Rhs; 			% Residuals
 % res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS]*Rhs;
-% 
-% res_L21 = [LhsA;LhsC] - [A;H_L21]*Rhs; 			
+%
+% res_L21 = [LhsA;LhsC] - [A;H_L21]*Rhs;
 % res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS]*Rhs;
 
 % **************************************
-%               STEP 7 
+%               STEP 7
 % **************************************
 
 H_Lpq = zeros(l,n,nc);
@@ -291,26 +291,21 @@ S_L21_CLS = zeros(n,l,nc);
 E_L21 = zeros(l,l,nc);
 E_L21_CLS = zeros(l,l,nc);
 for i = 1:nc
-    
+
     H_Lpq(:,:,i) = L*C_out.C_Lpq(:,:,i);
     H_Lpq_CLS(:,:,i) = L*C_out.C_Lpq_CLS(:,:,i);
     H_L21(:,:,i) = L*C_out.C_L21(:,:,i);
     H_L21_CLS(:,:,i) = L*C_out.C_L21_CLS(:,:,i);
-    
-    res_Lpq = [LhsA;LhsC] - [A;H_Lpq(:,:,i)]*Rhs;          
-    res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS(:,:,i)]*Rhs;
-    res_L21 = [LhsA;LhsC] - [A;H_L21(:,:,i)]*Rhs;          
-    res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS(:,:,i)]*Rhs;
-    
 
-        % Determine QSR from the residuals
-%         if ~sil
-%             disp(['      Computing ... System matrices G,L0 (Order ',num2str(n),')']);
-%         end
+    res_Lpq = [LhsA;LhsC] - [A;H_Lpq(:,:,i)]*Rhs;
+    res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS(:,:,i)]*Rhs;
+    res_L21 = [LhsA;LhsC] - [A;H_L21(:,:,i)]*Rhs;
+    res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS(:,:,i)]*Rhs;
+
         % Determine the residuals
-	cov_res = res_Lpq*res_Lpq'; 		% Covariance	
+	cov_res = res_Lpq*res_Lpq'; 		% Covariance
     cov_res_CLS = res_Lpq_CLS*res_Lpq_CLS';
-    
+
     W_Lpq(:,:,i) = cov_res(1:n,1:n);
     S_Lpq(:,:,i) = cov_res(1:n,n+1:n+l);
     E_Lpq(:,:,i) = cov_res(n+1:n+l,n+1:n+l);
@@ -318,10 +313,10 @@ for i = 1:nc
     W_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,1:n);
     S_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,n+1:n+l);
     E_Lpq_CLS(:,:,i) = cov_res_CLS(n+1:n+l,n+1:n+l);
-    
-    cov_res = res_L21*res_L21'; 			
+
+    cov_res = res_L21*res_L21';
     cov_res_CLS = res_L21_CLS*res_L21_CLS';
-    
+
     W_L21(:,:,i) = cov_res(1:n,1:n);
     S_L21(:,:,i) = cov_res(1:n,n+1:n+l);
     E_L21(:,:,i) = cov_res(n+1:n+l,n+1:n+l);
@@ -329,20 +324,7 @@ for i = 1:nc
     W_L21_CLS(:,:,i) = cov_res_CLS(1:n,1:n);
     S_L21_CLS(:,:,i) = cov_res_CLS(1:n,n+1:n+l);
     E_L21_CLS(:,:,i) = cov_res_CLS(n+1:n+l,n+1:n+l);
-    
-%         sig = dlyap(A,Q);
-%         G = A*sig*H_Lpq' + S;
-%         L0 = H_Lpq*sig*H_Lpq' + R_cov;
-% 
-          % Determine K and Ro
-%         if ~sil
-%             disp('      Computing ... Riccati solution')
-%         end
-% 
-%         [P,~,~] = idare(A',H',[],-L0,-G);
-%         Ro = L0 - H*P*H';
-%         K = (G - A*P*H')*(Ro\eye(size(Ro)));
-%         [K,Ro] = gl2kr(A,G,H_Lpq,L0);
+
 
 end
 
@@ -351,12 +333,6 @@ sys_est.H_Lpq = H_Lpq;
 sys_est.H_Lpq_CLS = H_Lpq_CLS;
 sys_est.H_L21 = H_L21;
 sys_est.H_L21_CLS = H_L21_CLS;
-  
-%   K,K_CLS,C_out,Ro,Ro_CLS,Q,Q_CLS,R,R_CLS,S,S_CLS,ss_out
-% C_out.K = K;
-% C_out.K_CLS = K_CLS;
-% C_out.Ro = Ro;
-% C_out.Ro_CLS = Ro_CLS;
 
 C_out.W_Lpq = W_Lpq;
 C_out.W_Lpq_CLS = W_Lpq_CLS;
