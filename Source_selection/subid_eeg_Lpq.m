@@ -1,7 +1,7 @@
-% 
-%   Modified stochastic subspace identification 
+%
+%   Modified stochastic subspace identification
 %   -------------------------------------------
-%   
+%
 %   The algorithm identifies  stochastic state space systems with the
 %   following form;
 %
@@ -14,25 +14,25 @@
 %   where L is given and C has sparse row (some rows in C are zeros).
 %   The method of obtaining Kalman states is the same as using 'CVA' in
 %   original 'subid' by Overchee, but when determining A and C using
-%   least square fitting, we further apply Lpq regularization on norms of 
+%   least square fitting, we further apply Lpq regularization on norms of
 %   rows in C to induce sparsity.
 %   ------ Write more about C estimation?? ------
 %
 %   The function is in the following form;
 %           [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,i,n,sil)
-% 
+%
 %   Inputs:
 %           y:          matrix of measured outputs
 %           L:          lead field matrix
 %           i:          number of block rows in Hankel matrices
-%                       (i * #outputs) is the max. order that can be estimated 
+%                       (i * #outputs) is the max. order that can be estimated
 %                       Typically: i = 2 * (max order)/(#outputs)
 %           n:          if > 0, order of state-space model (number of states)
 %                       if = -1, automatically choosing the order
-%                       if = [] (default), plot principle angles for 
+%                       if = [] (default), plot principle angles for
 %                                          determining the order by the user
 %           sil:        when equal to 1 no text output is generated
-%           
+%
 %   Outputs:
 %           sys_est:    contain A and H (=L*C)
 %           C_out:      contain C from each choices of regularized parameter
@@ -42,20 +42,20 @@
 %   Optional:
 %
 %           [A,B,C,D,K,R,AUX,ss] = subid(y,i,n,AUX,W,sil);
-%   
+%
 %           n:    optional order estimate (default [])
 %                 if not given, the user is prompted for the order
 %           AUX:  optional auxilary variable to increase speed (default [])
 %           W:    optional weighting flag
-%                      SV:    Singular values based algorithm 
+%                      SV:    Singular values based algorithm
 %                             (default for systems with input u)
 %                      CVA:   Canonical variate based algorithm
 %                             (default for systems without input u)
 %           ss:   column vector with singular values
 %           sil:  when equal to 1 no text output is generated
-%           
+%
 %   Reference:
-%   
+%
 %           Subspace Identification for Linear Systems
 %           Theory - Implementation - Applications
 %           Peter Van Overschee / Bart De Moor
@@ -67,7 +67,7 @@
 %   Modified by Anawat Nartkulpat, Parinthorn Manomaisaowapak
 %
 %   Copyright:
-%   
+%
 %           Peter Van Overschee, December 1995
 %           peter.vanoverschee@esat.kuleuven.ac.be
 %
@@ -77,8 +77,8 @@ function [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,i,n,sil)
 kappa_cond = 0;
 IsFine = 1;
 warning on
-  
-if (nargin < 6);sil = 0;end
+
+if (nargin < 5);sil = 0;end
 
 if ~sil
     disp(' ');
@@ -87,8 +87,8 @@ if ~sil
 end
 
 % Check the arguments
-if (nargin < 4);error('subid needs at least four arguments');end
-if (nargin < 5);n = [];end
+if (nargin < 3);error('subid needs at least four arguments');end
+if (nargin < 4);n = [];end
 
 % Turn the data into row vectors and check
 [l,ny] = size(y);if (ny < l);y = y';[l,ny] = size(y);end
@@ -123,7 +123,7 @@ R = R(1:2*i*l,1:2*i*l); 	% Truncate
 
 
 % **************************************
-%               STEP 1 
+%               STEP 1
 % **************************************
 
 % Set up some matrices
@@ -137,11 +137,11 @@ Rp = [R(1:l*i,:)];        % Past outputs
 % numerical conditioning (see algo page 131)
 % And it is needed both for CVA as MOESP
 
-% Ob  = (Rf/Rp)*Rp; which is the same as 
+% Ob  = (Rf/Rp)*Rp; which is the same as
 Ob = [Rf(:,1:l*i),zeros(l*i,l*i)];
 
 % **************************************
-%               STEP 2 
+%               STEP 2
 % **************************************
 
 % Compute the SVD
@@ -160,7 +160,7 @@ clear V S WOW
 
 
 % **************************************
-%               STEP 3 
+%               STEP 3
 % **************************************
 
 % Determine the order from the principle angle
@@ -171,7 +171,7 @@ if isempty(n)
   title('Principal Angles');
   ylabel('degrees');
   xlabel('Order');
-  
+
   n = 0;
   while (n < 1) || (n > l*i-1)
     n = input('      System order ? ');
@@ -187,7 +187,7 @@ if n == -1
   ang = real(acos(ss_out))*180/pi;
   angdiff = ang;
   angdiff(2:end) = angdiff(2:end) - angdiff(1:end-1);
-  
+
   angdiff(find(angdiff < 1.5)) = 0;
   [~,peak_ind] = findpeaks(angdiff);
   n = peak_ind(end) - floor(peak_ind(end)/10);
@@ -197,7 +197,7 @@ U1 = U(:,1:n); 				% Determine U1
 
 
 % **************************************
-%               STEP 4 
+%               STEP 4
 % **************************************
 
 % Determine gam and gamm
@@ -208,14 +208,14 @@ gam_inv  = pinv(gam); 			% Pseudo inverse
 gamm_inv = pinv(gamm); 			% Pseudo inverse
 
 % **************************************
-%               STEP 5 
+%               STEP 5
 % **************************************
 
 % Determine the matrices A and C
 %==========================================================================
 % Seperately compute A by least square and C by sparse row method
 
-Rhs = [  gam_inv*R(l*i+1:2*l*i,1:l*i),zeros(n,l) ]; 
+Rhs = [  gam_inv*R(l*i+1:2*l*i,1:l*i),zeros(n,l) ];
 
 LhsA = gamm_inv*R(l*i+l+1:2*l*i,1:l*i+l);
 A = LhsA/Rhs;
@@ -230,7 +230,7 @@ if kappa_cond
     Timepoints = 1000;
     C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
     [C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,C_out.alpha,n,C_out.C_Lpq);
-    
+
     [C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,C_out.alpha,n,C_out.C_L21);
 else
     [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
@@ -240,7 +240,7 @@ end
 
 %==========================================================================
 % **************************************
-%               STEP 7 
+%               STEP 7
 % **************************************
 
 % Calculate covariance matrices
@@ -264,22 +264,22 @@ S_L21_CLS = zeros(n,l,nc);
 E_L21 = zeros(l,l,nc);
 E_L21_CLS = zeros(l,l,nc);
 for i = 1:nc
-    
+
     H_Lpq(:,:,i) = L*C_out.C_Lpq(:,:,i);
     H_Lpq_CLS(:,:,i) = L*C_out.C_Lpq_CLS(:,:,i);
     H_L21(:,:,i) = L*C_out.C_L21(:,:,i);
     H_L21_CLS(:,:,i) = L*C_out.C_L21_CLS(:,:,i);
-    
+
     % Determine the residuals
-    res_Lpq = [LhsA;LhsC] - [A;H_Lpq(:,:,i)]*Rhs;          
+    res_Lpq = [LhsA;LhsC] - [A;H_Lpq(:,:,i)]*Rhs;
     res_Lpq_CLS = [LhsA;LhsC] - [A;H_Lpq_CLS(:,:,i)]*Rhs;
-    res_L21 = [LhsA;LhsC] - [A;H_L21(:,:,i)]*Rhs;          
+    res_L21 = [LhsA;LhsC] - [A;H_L21(:,:,i)]*Rhs;
     res_L21_CLS = [LhsA;LhsC] - [A;H_L21_CLS(:,:,i)]*Rhs;
- 
+
     % Determince the covariance	matrices for Lpq formulation
-	cov_res = res_Lpq*res_Lpq'; 		
+	cov_res = res_Lpq*res_Lpq';
     cov_res_CLS = res_Lpq_CLS*res_Lpq_CLS';
-    
+
     W_Lpq(:,:,i) = cov_res(1:n,1:n);
     S_Lpq(:,:,i) = cov_res(1:n,n+1:n+l);
     E_Lpq(:,:,i) = cov_res(n+1:n+l,n+1:n+l);
@@ -287,11 +287,11 @@ for i = 1:nc
     W_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,1:n);
     S_Lpq_CLS(:,:,i) = cov_res_CLS(1:n,n+1:n+l);
     E_Lpq_CLS(:,:,i) = cov_res_CLS(n+1:n+l,n+1:n+l);
-    
+
     % Determince the covariance	matrices for L21 formulation
-    cov_res = res_L21*res_L21'; 			
+    cov_res = res_L21*res_L21';
     cov_res_CLS = res_L21_CLS*res_L21_CLS';
-    
+
     W_L21(:,:,i) = cov_res(1:n,1:n);
     S_L21(:,:,i) = cov_res(1:n,n+1:n+l);
     E_L21(:,:,i) = cov_res(n+1:n+l,n+1:n+l);

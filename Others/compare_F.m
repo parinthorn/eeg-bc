@@ -30,7 +30,7 @@ if singleROC==1
             FNtmp = length(miss_ind);
             npos = TPtmp+FNtmp;
             TNtmp = n^2-npos-FPtmp;
-            
+
             TP(ii) = TP(ii)+TPtmp;
             FP(ii) = FP(ii)+FPtmp;
             FN(ii) = FN(ii)+FNtmp;
@@ -54,7 +54,7 @@ if length(n)==1
             FNtmp = length(miss_ind);
             npos = TPtmp+FNtmp;
             TNtmp = n^2-npos-FPtmp;
-            
+
             TP(ii) = TP(ii)+TPtmp;
             FP(ii) = FP(ii)+FPtmp;
             FN(ii) = FN(ii)+FNtmp;
@@ -72,18 +72,18 @@ elseif (length(n)==nexp)
             FNtmp = length(miss_ind);
             npos = TPtmp+FNtmp;
             TNtmp = n(ii)^2-npos-FPtmp;
-            
-            
+
+
             TP(ii) = TP(ii)+TPtmp;
             FP(ii) = FP(ii)+FPtmp;
             FN(ii) = FN(ii)+FNtmp;
             TN(ii) = TN(ii)+TNtmp;
-            
+
         end
     end
 else
     error('The dimension n is not valid.')
-    
+
 end
 M.FPR = (FP)./(TN+FP);
 M.TPR = (TP)./(FN+TP);
