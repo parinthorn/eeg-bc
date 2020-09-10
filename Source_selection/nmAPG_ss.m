@@ -1,5 +1,5 @@
 function [C,history] = nmAPG_ss(L,W,V,alpha,qq,STEP_SIZE,IS_LINESEARCH,varargin)
-% This program solve problem in the form of 
+% This program solve problem in the form of
 %           min_C (1/2)||V-LCW ||_F^2 + alpha * \sum \lambda ||C_i^T||_2^q
 % INPUT : C0 (optional)
 %% Proximal
@@ -10,8 +10,10 @@ gLen = size(W,1);
 d = 0.7;
 eta = 0.9;
 rho = 0.5;
+% rho = 0.8;
 IT_MAX = 200000;
-TOL = 1e-6;
+TOL = 1e-5;
+% TOL = 1e-6;
 ALLPRINT = 0;FREQ = 1000;
 % IS_LINESEARCH = 0;
 ac = STEP_SIZE;
@@ -43,13 +45,17 @@ WWt = W*W';
 while k<IT_MAX
     ta = tic;
     Yk = Ck+(tkm1/tk)*(Sk-Ck)+((tkm1-1)/tk)*(Ck-Ckm1);
-%     GradYk = loss_derivative(L,Yk,Z,W);
     tmp1 = LtL*Yk*WWt;
-    %Yk-ay*GradYk;
     if (IS_LINESEARCH) && (k>2)
         dY = Yk-Ykm1;dr = LtL*dY*WWt;
-        as = norm(dY,'fro')^2/trace(dY'*dr);
-        BACKTRACK = 1;
+        if all(dY==0)
+            as = STEP_SIZE;
+            BACKTRACK = 0;
+        else
+            as = norm(dY,'fro')^2/trace(dY'*dr);
+            BACKTRACK = 1;
+        end
+
         while BACKTRACK == 1
             Forward_step1 = Yk+as*(LtVWt-tmp1);
             Skp1 = prox_matrix(Forward_step1,as*alpha,[pp,qq,gLen]);
@@ -63,22 +69,28 @@ while k<IT_MAX
                 BACKTRACK = 0;
             end
         end
-        
+
     else
         Forward_step1 = Yk+as*(LtVWt-tmp1);
         Skp1 = prox_matrix(Forward_step1,as*alpha,[pp,qq,gLen]);
         objS = obj(Skp1);
     end
-    
+
     if objS <= uk-d*(norm(Skp1-Yk,'fro')^2)
-        Xkp1=Skp1;
+        Ckp1=Skp1;
         objval = objS;
     else
         tmp2 = LtL*Ck*WWt;
         if (IS_LINESEARCH) && (k>2)
             dZ = Ck-Ykm1; dr = LtL*dZ*WWt;
-            ac = norm(dZ,'fro')^2/trace(dZ'*dr);
-            BACKTRACK = 1;
+            if all(dZ==0)
+                ac = STEP_SIZE;
+                BACKTRACK = 0;
+            else
+                ac = norm(dZ,'fro')^2/trace(dZ'*dr);
+                BACKTRACK = 1;
+            end
+
             while BACKTRACK ==1
                 Forward_step2 = Ck+ac*(LtVWt-tmp2);
                 PGS = prox_matrix(Forward_step2,ac*alpha,[pp,qq,gLen]);
@@ -97,52 +109,53 @@ while k<IT_MAX
             PGS = prox_matrix(Forward_step2,ac*alpha,[pp,qq,gLen]);
             objPGS = obj(PGS);
         end
-        
-%         objPGS = obj(PGS);
         if objS<=objPGS
-            Xkp1 = Skp1;
+            Ckp1 = Skp1;
             objval = objS;
         else
-            Xkp1 = PGS;
+            Ckp1 = PGS;
             objval = objPGS;
         end
     end
-    
+
     tkp1 = 0.5*(sqrt(4*tk^2+1)+1);
     qkp1 = eta*qk+1;
     ukp1 = (eta*qk*uk+objval)/qkp1;
     history.tpi(k,1) = toc(ta);
     history.obj(k,1) = objval;
-    ERR = norm(Xkp1-Ck,'fro');
+    ERR = norm(Ckp1-Ck,'fro');
     ERRprev = norm(Ck,'fro');
     history.relstep(k,1) = ERR/ERRprev;
-    if ((ERR<(TOL*ERRprev)) || (all(Xkp1==0,'all'))) && k>1 %|| ((k>1) && (abs(objval-history.obj(k-1))<objTOL*objval))
-        C = (Xkp1);
+    if ((ERR<(TOL*ERRprev)) || (all(Ckp1==0,'all'))) && k>2 %|| ((k>1) && (abs(objval-history.obj(k-1))<objTOL*objval))
+        C = (Ckp1);
         FLAG = 0;
+        if k<5 && (any(Ckp1~=0,'all')) % remove when finished
+            error('The iterations may converge too early')
+        end
         break
     else
-        C = (Xkp1);
+        C = (Ckp1);
         FLAG = -1;
     end
-    
-    
+
+
     k = k+1;
     if ((mod(k,FREQ)==0) && ALLPRINT)
-        fprintf('%3d\t%10.4f\t%10.4f\n',k,objval,norm(Xkp1-Ck,'fro')/norm(Ckm1,'fro'))
-%         toc(ta);
+        fprintf('%3d\t%10.4f\t%10.4f\n',k,objval,norm(Ckp1-Ck,'fro')/norm(Ckm1,'fro'))
+        %         toc(ta);
     end
     % CACHING
     tk = tkp1;
     tkm1 = tk;
     Sk = Skp1;
-%   vk = vkp1;
+    %   vk = vkp1;
     Ckm1 = Ck;
-    Ck = Xkp1;
+    Ck = Ckp1;
     qk = qkp1;
     uk = ukp1;
     Ykm1 = Yk;
-%   tmp1_old = tmp1;
-    
+    %   tmp1_old = tmp1;
+
 end
 
 if FLAG==-1

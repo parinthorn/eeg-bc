@@ -22,27 +22,31 @@ function [M] = Solve_Lpq_regression(L,W,V,GridSize,IsFine)
 AA = L'*V*W'; % For alpha_max computation
 alpha_max = max(norms(AA,2,2));
 Lipschitz = norm(L,2)^2*norm(W,2)^2;
+IS_LINESEARCH = 1;
 if IsFine
-    FineGrid = logspace(-8,-5,26)*alpha_max;
+%     FineGrid = logspace(-8,-5,26)*alpha_max;
+    FineGrid = logspace(-3,-2,26)*alpha_max;
     FineGrid(end) = [];
-    alpha = [0,FineGrid,logspace(-5,0,GridSize-1)*alpha_max];
+%     alpha = [0,FineGrid,logspace(-5,0,GridSize-1)*alpha_max];
+    alpha = [0,FineGrid,logspace(-2,-1,GridSize-1)*alpha_max];
 else
     alpha = [0,logspace(-5,0,GridSize-1)*alpha_max];
 end
 
 for ii=1:length(alpha)
 if ii==1
-    [C_L21(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),1,0.9/Lipschitz,1);
+    [C_L21(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),1,0.9/Lipschitz,IS_LINESEARCH);
 else
-    [C_L21(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),1,0.9/Lipschitz,1,C_L21(:,:,ii-1));
+    [C_L21(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),1,0.9/Lipschitz,IS_LINESEARCH,C_L21(:,:,ii-1));
 end
 
 
 
 end
-parfor ii=1:length(alpha)
+for ii=1:length(alpha)
     fprintf('Estimation progress: %d / %d \n',ii,length(alpha))
-    [C_Lpq(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),0.5,0.9/Lipschitz,1,C_L21(:,:,ii));
+
+    [C_Lpq(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),0.5,0.9/Lipschitz,IS_LINESEARCH,C_L21(:,:,ii));
 end
 for ii=1:length(alpha)
     fprintf('Model selection progress: %d / %d \n',ii,length(alpha))
@@ -57,6 +61,9 @@ nz_ind_C_Lpq{ii,1} = find(sum(C_Lpq(:,:,ii).^2,2));
 [bic_Lpq_regLS(ii),aicc_Lpq_regLS(ii)] = model_criteria(V,L,W,C_Lpq(:,:,ii));
 
 end
+hold on
+stairs(bic_Lpq)
+hold off
 [~,ind_chosen_Lpq.bic] = min(bic_Lpq);
 [~,ind_chosen_L21.bic] = min(bic_L21);
 [~,ind_chosen_Lpq.aicc] = min(aicc_Lpq);

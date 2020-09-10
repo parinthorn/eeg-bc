@@ -78,7 +78,7 @@ kappa_cond = 0;
 IsFine = 1;
 warning on
 
-if (nargin < 5);sil = 0;end
+if (nargin < 6);sil = 0;end
 
 if ~sil
     disp(' ');
