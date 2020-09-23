@@ -49,6 +49,7 @@ end
 M.FPR = (FP)./(TN+FP);
 M.TPR = (TP)./(FN+TP);
 M.ACC = (TP+TN)./(FN+FP+TN+TP);
+M.F1  = 2*TP./(2*TP+FP+FN);
 
 M.TP = TP;
 M.TN = TN;
