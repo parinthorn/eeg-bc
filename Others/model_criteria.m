@@ -1,9 +1,10 @@
 function [bic,aicc] = model_criteria(V,L,W,C)
-% This function solve the problem
-%           \argmin_{C} (1/2) ||V-L*C*W||_F^2
-%              subject to C(C_in==0)== 0
-% If there exists many solution, minimum norm solution is provided.
-
+% This function return bic, aicc measure from the constrained Least square
+%     min (1/2) ||V-LCW||_F ^2
+%     s.t. C(C_Lpq==0)==0
+% Input: V, L, W, C
+%Output: bic, aicc
+% Written by Parinthorn Manomaisaowapak
 
 [ny,N] = size(V);
 E = V-L*C*W;
