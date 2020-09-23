@@ -10,6 +10,7 @@ function M = compare_F2(ind,ind_true,n)
 %                    [nexp,1] if each experiment has different size of GC
 %                    matrix
 % OUTPUT :       M - struct with fields M.TPR, M.FPR, M.ACC,
+% Written by Parinthorn Manomaisaowapak
 [nexp,nreal] = size(ind);
 TP = zeros(nexp,nreal);
 FP = zeros(nexp,nreal);
