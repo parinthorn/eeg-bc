@@ -1,4 +1,4 @@
-function generate_eegdata(nbatch,foldername,plotting,postfix,sa,is_pink)
+function generate_eegdata(nbatch,foldername,plotting,postfix,sa,is_pink,n_deep,n_source_active)
 %
 %   Jitkomut Songsiri, Parinthorn Manomaisaowapak, Anawat Nartkulpat, 2020
 %
@@ -85,7 +85,7 @@ truth.dataset = foldername;
 
 % parameter of state-space model of sources REVISE
 n_source = 50; %(m in the document)
-n_source_active = 8;
+% n_source_active = 8;
 PARAMETER.m = n_source;                   % #SOURCES
 PARAMETER.m_active = n_source_active;            % #Active sources
 PARAMETER.m_inactive = PARAMETER.m-PARAMETER.m_active;  % #Inactive sources (Redundant)
@@ -153,17 +153,23 @@ end
 % parameter of the model
 
 sys = gengcss_eeg(PARAMETER,truth.bandpass,fs,0);  % system of source dynamics
-imagesc(sys.F0)
-axis('square')
-pause(0.1)
+% imagesc(sys.F0)
+% axis('square')
+% pause(0.1)
 %% spatial structure definition
 
 ind_cluster_source = sys.PARAMETER.ind_cluster_source;
 
 % sample source rois
 % ind_roi_cluster = randperm(8); ind_roi_cluster(n_source_cluster+1:end) = []; % assign the ROI number to each cluster of source (size = n_source_cluster x 1)
-ind_roi_cluster = [1 3 5 7]; % shallow
+% ind_roi_cluster = [1 3 5 7]; % shallow
 % ind_roi_cluster = [2 4 6 8]; % deep
+sdeep = [2 4 6 8];
+sshallow = [1 3 5 7];
+ind_roi_cluster = [randsample(sdeep,n_deep) randsample(sshallow,4-n_deep)]; % mixed
+ind_roi_cluster = ind_roi_cluster(randperm(4));
+
+
 % assign ROI to each source. Sources in the same cluster are assigned to the same ROI
 truth.in_roi = zeros(1,n_source);
 for i = 1:n_source_cluster-1
@@ -208,6 +214,9 @@ end
 
 % obtain the lead field matrix
 truth.EEG_field_pat = sa.cortex75K.EEG_V_fem_normal(:, sa.cortex2K.in_from_cortex75K)*truth.source_amp; % (n_electrode x 2K) x (2K x n_source)
+
+[L_augment,truth.augment_data] = upsample_L(n_source,ind_roi_cluster,ind_cluster_source,n_source_cluster,sa,rois,truth.sigmas,inds_roi_inner_2K,inds_roi_outer_2K);
+
 sys.L0 = truth.EEG_field_pat;
 M = reduce_L(sys.L0);
 sys.L10 = M.L10;
@@ -240,7 +249,7 @@ fprintf('Generating batch number: %d \n',ibatch)
 [truth.sources(:,:,ibatch),sys.PARAMETER.pinknoise_cov(:,:,ibatch),factorC(ibatch)] = getdatass_pinknoise(sys,N,truth.snr,is_pink);
 
 % recalculate F using the sample covariance of the generated pink noise
-sys.F(:,:,ibatch) = calgcss(sys.source_model0.A,sys.source_model0.C,sys.PARAMETER.sigma_w,sys.PARAMETER.pinknoise_cov(:,:,ibatch));
+% sys.F(:,:,ibatch) = calgcss(sys.source_model0.A,sys.source_model0.C,sys.PARAMETER.sigma_w,sys.PARAMETER.pinknoise_cov(:,:,ibatch));
 
 sys.source_model{ibatch} = sys.source_model0;
 sys.source_model{ibatch}.C = sys.source_model{ibatch}.C*factorC(ibatch);
@@ -298,18 +307,24 @@ k = randperm(n_source); k = k(1); % source index
 ma = max(truth.source_amp(:, k));
 allplots_cortex(sa, truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, k), ...
     [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/source1']);
-
+close all
 % all source amplitude distributions
 ma = max(sum(truth.source_amp, 2));
 allplots_cortex(sa, sum(truth.source_amp(sa.cortex2K.in_to_cortex75K_geod, :), 2), ...
     [0 ma], cm17a, 'A.U.', 1, ['figures/' foldername '/truth/dataset' num2str(idata) '/sources']);
-
+figlist = findobj(allchild(0),'type','figure');
+fig_name = {'cortex_cbar','cortex_smooth_bottom_upright','cortex_smooth_bottom', ...
+    'cortex_smooth_top_upright','cortex_smooth_top','cortex_smooth_left_inner', ...
+    'cortex_smooth_right','cortex_smooth_right_inner','cortex_smooth_left'};
+for ff=1:length(figlist)
+    print(figlist(ff),['figures/' foldername '/truth/dataset' num2str(idata) '/sources/' fig_name{ff}],'-depsc')
+end
 % dipole patterns
 ma = max(abs(truth.EEG_field_pat(:, k)));
 allplots_head(sa, sa.EEG_elec2head*truth.EEG_field_pat(:, k), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_pat1'], sa.EEG_locs_3D(:, 1:3));
 
-ma = max(abs(sum(truth.field_pat, 2)));
-allplots_head(sa, sum(truth.field_pat, 2), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/pats']);
+ma = max(abs(sum(truth.EEG_field_pat, 2)));
+allplots_head(sa, sum(truth.EEG_field_pat, 2), [-ma ma], cm17, 'A.U.', ['figures/' foldername '/truth/dataset' num2str(idata) '/pats']);
 
 export_fig(['figures/' foldername '/truth/dataset' num2str(idata) '/EEG_psd'], '-r150', '-a2');
 
@@ -436,7 +451,7 @@ end
 %% Saving data
 
 eegdata = struct('EEG_data',EEG_data,'source_data',truth.sources,'sampling_frequency',fs,'snr_source',truth.snr,...
-                 'snr_sensor',truth.snr_sensor,'is_pink',is_pink);
+                 'snr_sensor',truth.snr_sensor,'is_pink',is_pink,'L',[sys.L0 L_augment]);
 
 % model = struct('PARAMETER',sys.PARAMETER,'source_model0',sys.source_model0,'source_model',sys.source_model,...
 %                 'F0',sys.F0,'F',sys.F);
