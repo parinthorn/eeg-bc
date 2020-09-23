@@ -25,13 +25,13 @@ end
 
 for ii=1:length(alpha)
 if ii==1
-    [x,~, ~] = spectral_ADMM_sseeg_revise(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.05,10);
+    [x,~, ~] = spectral_ADMM_sseeg(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.05,10);
 %     [x,~] = grouplasso_sseeg(G, b, P,alpha(ii), n,10);
     C_L21(:,:,ii) = reshape(x,[n m])';
     x0 = x;
 
 else
-    [x,~, ~] = spectral_ADMM_sseeg_revise(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.05,10,x0);
+    [x,~, ~] = spectral_ADMM_sseeg(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.05,10,x0);
 %     [x,~] = grouplasso_sseeg(G, b, P,alpha(ii), [2 1 n],0.1,0.5,C_L21(:,:,ii-1));
     C_L21(:,:,ii) = reshape(x,[n m])';
      x0 = x;

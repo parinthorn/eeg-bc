@@ -28,13 +28,13 @@ for ii=1:length(alpha)
     eta = 0.7;
     rho = 0.5;
 if ii==1
-    [x,~, ~] = spectral_ADMM_sseeg_revise(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.5,2);
+    [x,~, ~] = spectral_ADMM_sseeg(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.5,2);
     C_L21(:,:,ii) = reshape(x,[n m])';
     x0 = x;
     [C_Lpq(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),0.5,STEP_SIZE,1,C_L21(:,:,ii));
 
 else
-    [x,~, ~] = spectral_ADMM_sseeg_revise(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.5,2,x0);
+    [x,~, ~] = spectral_ADMM_sseeg(G, b, P,alpha(ii),0,2,1, [m*n,n,1], 10,0.5,2,x0);
     C_L21(:,:,ii) = reshape(x,[n m])';
      x0 = x;
     [C_Lpq(:,:,ii),~] = nmAPG_ss(L,W,V,alpha(ii),0.5,STEP_SIZE,1,C_L21(:,:,ii));
