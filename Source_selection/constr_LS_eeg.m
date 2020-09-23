@@ -5,6 +5,7 @@ function [C,flag] = constr_LS_eeg(V,L,W,nz_ind)
 % If Constrained Least square is well-defined, flag = 0
 % If Constrained LS is not well-defined, return regularized constrained LS
 % solution flag = -1.
+%% Written by PARINTHORN MANOMAISAOWAPAK, JITKOMUT SONGSIRI
 m = size(L,2);
 n = size(W,1);
 C= zeros(m,n);

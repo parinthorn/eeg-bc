@@ -10,6 +10,7 @@
 %                 y(t) = L*x(t) + v(t)
 %                      = L*C*z(t) + L*n(t) + v(t)
 %                      = H*z(t) + e(t)      ; H = L*C, e(t) = L*n(t) + v(t)
+%               C is estimated by L21 regularized regression
 %
 %   where L is given and C has sparse row (some rows in C are zeros).
 %   The method of obtaining Kalman states is the same as using 'CVA' in

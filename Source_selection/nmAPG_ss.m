@@ -1,8 +1,12 @@
 function [C,history] = nmAPG_ss(L,W,V,alpha,qq,STEP_SIZE,IS_LINESEARCH,varargin)
 % This program solve problem in the form of
 %           min_C (1/2)||V-LCW ||_F^2 + alpha * \sum \lambda ||C_i^T||_2^q
-% INPUT : C0 (optional)
-%% Proximal
+% using non-monotone accelerated proximal gradient algorithm (nmAPG) proposed in https://zhouchenlin.github.io/Publications/2015-NIPS-APG.pdf
+% INPUT : qq = 1 or 0.5
+%         STEP_SIZE = proximal stepsize, maximum is 1/[norm(L)^2*norm(W)^2]
+%         IS_LINESEARCH = (0,1), if 1, Barzilai-Borwein linesearch is performed to expedite the proximal stepsize
+%         variable input: initial solution or else initialized from all zero solution.
+%% Written by PARINTHORN MANOMAISAOWAPAK
 pp = 2;
 % qq = 0.5;
 gLen = size(W,1);

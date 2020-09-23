@@ -1,4 +1,6 @@
 function prox_C = prox_matrix(C,v,PARAMETERS)
+% this function evaluate proximal operator in a matrix form with input C
+%% Written by PARINTHORN MANOMAISAOWAPAK
 tmp = C';
 tmp = tmp(:);
 prox_C = prox_pq_eff(tmp,v,PARAMETERS);

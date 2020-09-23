@@ -1,7 +1,9 @@
 function [LhsC,Rhs] = extractVW(y,L,u,i,n,AUXin,W,sil);
-
+% This function only find V, W matrix from subid_eeg_Lpq.m
+% only for testing
+%% Written by PARINTHORN MANOMAISAOWAPAK
 warning on
-  
+
 if (nargin < 8);sil = 0;end
 
 mydisp(sil,' ');
@@ -16,7 +18,7 @@ if (nargin < 6);AUXin = [];end
 % Check if its deterministic or stochastic ID
 if isempty(u);   ds_flag = 2; 		% Stochastic
 else;           ds_flag = 1; 		% Deterministic
-end  
+end
 
 % Give W its default value
 if (nargin < 7);W = [];end
@@ -41,17 +43,17 @@ if ((ny-2*i+1) < (2*l*i));error('Not enough data points');end
 
 % Check the weight to be used
 Wn = 0;
-if (length(W) == 2) 
+if (length(W) == 2)
   if (all(W == 'SV') | all(W == 'sv') | all(W == 'Sv'));
-    Wn = 1; 
+    Wn = 1;
     if (ds_flag == 1);Waux = 2;else;Waux = 3;end
   end
-end    
-if (length(W) == 3) 
+end
+if (length(W) == 3)
   if (prod(W == 'CVA') | prod(W == 'cva') | prod(W == 'Cva'));
     Wn = 2;
     if (ds_flag == 1);Waux = 3;else;Waux = 1;end
-  end 
+  end
 end
 if (Wn == 0);error('W should be SV or CVA');end
 W = Wn;
@@ -63,7 +65,7 @@ j = ny-2*i+1;
 if (ds_flag == 1);Uaux = u(1,1);else;Uaux = [];end
 [AUXin,Wflag] = chkaux(AUXin,i,Uaux,y(1,1),ds_flag,Waux,sil);
 
-  
+
 % Compute the R factor
 if isempty(AUXin)
   Y = blkhank(y/sqrt(j),2*i,j); 	% Output block Hankel
@@ -95,7 +97,7 @@ end
 
 
 % **************************************
-%               STEP 1 
+%               STEP 1
 % **************************************
 
 mi2  = 2*m*i;
@@ -105,10 +107,10 @@ if isempty(AUXin) | (Wflag == 1)
   Rp = [R(1:m*i,:);R(2*m*i+1:(2*m+l)*i,:)]; % Past (inputs and) outputs
   if (ds_flag == 1)
     Ru  = R(m*i+1:2*m*i,1:mi2); 	% Future inputs
-    % Perpendicular Future outputs 
-    Rfp = [Rf(:,1:mi2) - (Rf(:,1:mi2)/Ru)*Ru,Rf(:,mi2+1:2*(m+l)*i)]; 
+    % Perpendicular Future outputs
+    Rfp = [Rf(:,1:mi2) - (Rf(:,1:mi2)/Ru)*Ru,Rf(:,mi2+1:2*(m+l)*i)];
     % Perpendicular Past
-    Rpp = [Rp(:,1:mi2) - (Rp(:,1:mi2)/Ru)*Ru,Rp(:,mi2+1:2*(m+l)*i)]; 
+    Rpp = [Rp(:,1:mi2) - (Rp(:,1:mi2)/Ru)*Ru,Rp(:,mi2+1:2*(m+l)*i)];
   end
 end
 
@@ -128,8 +130,8 @@ if isempty(AUXin)
     else
       Ob = (Rfp/Rpp)*Rp;
     end
-  else    
-    % Ob  = (Rf/Rp)*Rp; which is the same as 
+  else
+    % Ob  = (Rf/Rp)*Rp; which is the same as
     Ob = [Rf(:,1:l*i),zeros(l*i,l*i)];
   end
 else
@@ -140,7 +142,7 @@ end
 
 
 % **************************************
-%               STEP 2 
+%               STEP 2
 % **************************************
 
 % Compute the SVD
@@ -153,7 +155,7 @@ if isempty(AUXin) | (Wflag == 1)
     WOW = [Ob(:,1:mi2) - (Ob(:,1:mi2)/Ru)*Ru,Ob(:,mi2+1:2*(m+l)*i)];
   else
     WOW = Ob;
-  end    
+  end
   if (W == 2)
     W1i = triu(qr(Rf'));
     W1i = W1i(1:l*i,1:l*i)';
@@ -170,7 +172,7 @@ end
 
 
 % **************************************
-%               STEP 3 
+%               STEP 3
 % **************************************
 
 % Determine the order from the singular values
@@ -181,7 +183,7 @@ if isempty(n)
     title('Principal Angles');
     ylabel('degrees');
   else
-    H = bar([1:l*i],ss); xx = get(H,'XData'); yy = get(H,'YData'); 
+    H = bar([1:l*i],ss); xx = get(H,'XData'); yy = get(H,'YData');
     semilogy(xx,yy+10^(floor(log10(min(ss)))));
     axis([0,length(ss)+1,10^(floor(log10(min(ss)))),10^(ceil(log10(max(ss))))]);
     title('Singular Values');
@@ -199,7 +201,7 @@ U1 = U(:,1:n); 				% Determine U1
 
 
 % **************************************
-%               STEP 4 
+%               STEP 4
 % **************************************
 
 % Determine gam and gamm
@@ -211,14 +213,14 @@ gamm_inv = pinv(gamm); 			% Pseudo inverse
 
 
 % **************************************
-%               STEP 5 
+%               STEP 5
 % **************************************
 
 % Determine the matrices A and C
-% mydisp(sil,['      Computing ... System matrices A,C (Order ',num2str(n),')']); 
+% mydisp(sil,['      Computing ... System matrices A,C (Order ',num2str(n),')']);
 % RhsT = [  gam_inv*R((2*m+l)*i+1:2*(m+l)*i,1:(2*m+l)*i),zeros(n,l) ; ...
-%     R(m*i+1:2*m*i,1:(2*m+l)*i+l)]; 
-% 
+%     R(m*i+1:2*m*i,1:(2*m+l)*i+l)];
+%
 % LhsT = [        gamm_inv*R((2*m+l)*i+l+1:2*(m+l)*i,1:(2*m+l)*i+l) ; ...
 %     R((2*m+l)*i+1:(2*m+l)*i+l,1:(2*m+l)*i+l)];
 
@@ -226,7 +228,7 @@ gamm_inv = pinv(gamm); 			% Pseudo inverse
 % Seperately compute A by least square and C by sparse row method
 
 Rhs = [  gam_inv*R((2*m+l)*i+1:2*(m+l)*i,1:(2*m+l)*i),zeros(n,l) ; ...
-         R(m*i+1:2*m*i,1:(2*m+l)*i+l)]; 
+         R(m*i+1:2*m*i,1:(2*m+l)*i+l)];
 
 LhsA = gamm_inv*R((2*m+l)*i+l+1:2*(m+l)*i,1:(2*m+l)*i+l);
 A = LhsA/Rhs;
@@ -234,9 +236,3 @@ A = LhsA/Rhs;
 LhsC = R((2*m+l)*i+1:(2*m+l)*i+l,1:(2*m+l)*i+l);
 % C is solved from min ||LhsC-L*C*Rhs||^2 + lambda*sum||Cj|| where H=L*C
 end
-
-
-
-
-
-
