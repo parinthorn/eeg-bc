@@ -19,6 +19,9 @@ function [x,Px, history] = spectral_ADMM_sseeg(G, b, P,a1, a2,pp,qq, PARAMETER, 
 %                  .rho     : ADMM penalty in each iteration
 %                  .fit     : the sum square loss of final solution
 %                  .tpi     : primal residual norm
+% implemented as in http://proceedings.mlr.press/v54/xu17a/xu17a.pdf
+% always converge if qq=1, pp=2
+% set a2 = 0
 rhotilde = rho;
 PRINT_RESULT = 1;
 FREQ_PRINT = 10;
