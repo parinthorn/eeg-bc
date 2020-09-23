@@ -1,3 +1,6 @@
+%% Simulation data experiment: 50% deep source
+%%                             20% active source
+%%                             61 No. of electrodes
 %% This script generate source amplitude for generating Leadfield matrix
 %% Written by: PARINTHORN MANOMAISAOWAPAK
 clc

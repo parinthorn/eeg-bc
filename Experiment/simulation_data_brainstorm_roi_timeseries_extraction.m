@@ -1,4 +1,8 @@
-%% average rois
+%% Simulation data experiment: 50% deep source
+%%                             20% active source
+%%                             61 No. of electrodes
+%% This script generate source signal in roi level by averaging the signals in the region
+%% Written by: PARINTHORN MANOMAISAOWAPAK
 clear
 clc
 dir_name = 'G:\Shared drives\MASTER_DRIVE\Journal\Experiment_main\experiment_brainstorm_dir\act_10_deep_2_nelec_61_constraint75k\data\';

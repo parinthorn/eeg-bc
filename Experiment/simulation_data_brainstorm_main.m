@@ -1,3 +1,6 @@
+%% Simulation data experiment: 50% deep source
+%%                             20% active source
+%%                             61 No. of electrodes
 %% This script reconstruct 75K source signal using sLORETA, WMNE, LCMV
 %% using brainstorm toolbox :https://neuroimage.usc.edu/brainstorm/
 %% WRITTEN BY: PARINTHORN MANOMAISAOWAPAK

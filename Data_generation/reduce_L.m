@@ -1,4 +1,19 @@
 function M = reduce_L(L0)
+  % This function add leadfield matrix L10, L20_32, L20 to struct M
+  % L0 is based on 10-5 electrode placement system with 108 labels in 'full_label'
+  % L10 is based on reduce_1010
+  % L20_32 is based on reduce_L1020_32
+  % L20 is based on reduce_L1020
+  % INPUT: L0
+  % OUTPUT: M.L10
+  %       : M.L20_32
+  %       : M.L20
+  %       : M.L10_ind, column index of L10 indices from L10
+  %       : M.L20_32_ind, column index of L10 indices from L20_32
+  %       : M.L20_ind, column index of L10 indices from L20
+  % Written by: PARINTHORN MANOMAISAOWAPAK
+
+
 full_label = {'AF3','AF4','AF7','AF8','AFF1h', ...
     'AFF2h','AFF5h','AFF6h','AFF7h','AFF8h', ...
     'AFp1','AFp2','AFz','C1','C2','C3','C4', ...
@@ -29,7 +44,7 @@ M.reduce_1020_32 = {'F7','T7','P7', ...
  'FC1', 'CMS', 'CP1', 'Oz', ...
  'Fz', 'Cz', 'Pz', 'FC2', 'DRL', 'CP2', 'Fp2', ...
  'AF4', 'F4', 'C4', 'P4', 'PO4', 'O2', 'FC6', 'CP6', ...
- 'F8', 'T8', 'P8'}; %Riera, Alejandro. (2012). Computational Intelligence Techniques for Electro-Physiological Data Analysis. 
+ 'F8', 'T8', 'P8'}; %Riera, Alejandro. (2012). Computational Intelligence Techniques for Electro-Physiological Data Analysis.
 
 M.L10_ind = find(ismember(full_label,M.reduce_1010));
 M.L20_ind = find(ismember(full_label,M.reduce_1020));

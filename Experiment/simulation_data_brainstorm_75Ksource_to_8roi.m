@@ -1,4 +1,8 @@
-%%
+%%% Simulation data experiment: 50% deep source
+%%%                             20% active source
+%%%                             61 No. of electrodes
+%%% This script generate a mapping from 2K/75K sources to 8 rois sorting in Haufe's ordering
+
 load('G:\Shared drives\MASTER_DRIVE\Journal\Source_Localization\NYHead\tess_cortex_01.mat','Vertices')
 %% downsample
 dsFactor = 2000/(74661); %  sampling 75K to 2K source

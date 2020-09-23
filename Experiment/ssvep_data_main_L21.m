@@ -12,18 +12,6 @@
 
 clc;  clear all; close all;
 
-% load('EEG_data.mat')
-%
-% % Collecting Task data
-%
-% ssvep_eeg = cell(1,ntask_blocks);
-%
-% for k = 1:ntask_blocks
-%     ssvep_eeg{k}= data_EEG(:,eeg_task_points{k});
-% end
-%
-% save data_ssvep_eeg ssvep_eeg
-
 %% Model parameters
 
 load('data_ssvep_eeg.mat')

@@ -1,3 +1,9 @@
+%% Simulation data experiment: 50% deep source
+%%                             20% active source
+%%                             61 No. of electrodes
+%% This script compute Granger causality matrix F and reorder the rois
+%% Written by: PARINTHORN MANOMAISAOWAPAK
+
 clear
 clc
 foldername = 'G:\Shared drives\MASTER_DRIVE\Journal\DATA\experiment_paper_L_augment\';

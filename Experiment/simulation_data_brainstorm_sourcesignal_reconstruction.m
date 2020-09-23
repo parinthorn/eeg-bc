@@ -1,4 +1,9 @@
-%% average rois
+%% Simulation data experiment: 50% deep source
+%%                             20% active source
+%%                             61 No. of electrodes
+%% This script generate 75K dimensional source signal by multiplying
+%% the kernel from brainstorm to the eeg data
+%% Written by: PARINTHORN MANOMAISAOWAPAK
 clear
 clc
 dir_name = 'G:\Shared drives\MASTER_DRIVE\Journal\Experiment_main\experiment_brainstorm_dir\act_10_deep_2_nelec_61_constraint75K\data\';
