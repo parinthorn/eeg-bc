@@ -121,9 +121,6 @@ while k<IT_MAX
     if (((ERR<=(TOL*ERRprev))&& (k>3)) || (all(Ckp1==0,'all')))  %|| ((k>1) && (abs(objval-history.obj(k-1))<objTOL*objval))
         C = (Ckp1);
         FLAG = 0;
-%         if k<12 && (any(Ckp1~=0,'all')) % remove when finished
-%             error('The iterations may converge too early')
-%         end
         fprintf('TOTAL_ITERATION: %d, objval:%.3f\n \n',k,objval)
         break
     else

@@ -27,3 +27,4 @@ for n_act = density
         end
     end
 end
+save('permind','permind')

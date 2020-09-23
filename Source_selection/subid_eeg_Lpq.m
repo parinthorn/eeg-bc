@@ -74,7 +74,8 @@
 %
 
 function [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,i,n,sil)
-kappa_cond = 0;
+
+
 IsFine = 1;
 warning on
 
@@ -225,16 +226,8 @@ LhsC = R(l*i+1:l*i+l,1:l*i+l);
 
 % PRECOMPUTATION
 
-if kappa_cond
-    % PRECOMPUTATION
-    Timepoints = 1000;
-    C_out = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
-    [C_out.kappa_ncvx,C_out.ind_k_ncvx] = kappa_selection_timeseries(y,0.5,Timepoints,L,C_out.alpha,n,C_out.C_Lpq);
+[C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
 
-    [C_out.kappa_cvx,C_out.ind_k_cvx] = kappa_selection_timeseries(y,1,Timepoints,L,C_out.alpha,n,C_out.C_L21);
-else
-    [C_out] = Solve_Lpq_regression(L,Rhs,LhsC,50,IsFine);
-end
 
 [~,~,nc] = size(C_out.C_Lpq);
 
