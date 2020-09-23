@@ -8,14 +8,14 @@ pp = 2;
 gLen = size(W,1);
 %% Algorithm parameters
 d = 0.7;
+% d = 2;
 eta = 0.9;
 rho = 0.5;
 % rho = 0.8;
 IT_MAX = 200000;
-TOL = 1e-5;
-% TOL = 1e-6;
-ALLPRINT = 0;FREQ = 1000;
-% IS_LINESEARCH = 0;
+% TOL = 1e-5;
+TOL = 1e-7;
+ALLPRINT = 1;FREQ = 1000;
 ac = STEP_SIZE;
 as = ac;
 %%
@@ -46,35 +46,28 @@ while k<IT_MAX
     ta = tic;
     Yk = Ck+(tkm1/tk)*(Sk-Ck)+((tkm1-1)/tk)*(Ck-Ckm1);
     tmp1 = LtL*Yk*WWt;
-    if (IS_LINESEARCH) && (k>2)
+    if (IS_LINESEARCH) && (k>3) %
         dY = Yk-Ykm1;dr = LtL*dY*WWt;
-        if all(dY==0)
-            as = STEP_SIZE;
-            BACKTRACK = 0;
-        else
-            as = norm(dY,'fro')^2/trace(dY'*dr);
-            BACKTRACK = 1;
-        end
-
+        as = norm(dY,'fro')^2/trace(dY'*dr);
+        BACKTRACK = 1;
         while BACKTRACK == 1
             Forward_step1 = Yk+as*(LtVWt-tmp1);
             Skp1 = prox_matrix(Forward_step1,as*alpha,[pp,qq,gLen]);
             objS = obj(Skp1);
             if (objS<=obj(Yk)-d*norm(Skp1-Yk,'fro')^2) || (objS<=uk-d*norm(Skp1-Yk,'fro')^2)
                 BACKTRACK =0;
-            end
-            as =as*rho;
-            if as<STEP_SIZE
+            elseif as<=STEP_SIZE
                 as= STEP_SIZE;
                 BACKTRACK = 0;
+            else
+                as =as*rho;
             end
         end
-
     else
         Forward_step1 = Yk+as*(LtVWt-tmp1);
         Skp1 = prox_matrix(Forward_step1,as*alpha,[pp,qq,gLen]);
         objS = obj(Skp1);
-    end
+    end %
 
     if objS <= uk-d*(norm(Skp1-Yk,'fro')^2)
         Ckp1=Skp1;
@@ -83,25 +76,19 @@ while k<IT_MAX
         tmp2 = LtL*Ck*WWt;
         if (IS_LINESEARCH) && (k>2)
             dZ = Ck-Ykm1; dr = LtL*dZ*WWt;
-            if all(dZ==0)
-                ac = STEP_SIZE;
-                BACKTRACK = 0;
-            else
-                ac = norm(dZ,'fro')^2/trace(dZ'*dr);
-                BACKTRACK = 1;
-            end
-
+            ac = norm(dZ,'fro')^2/trace(dZ'*dr);
+            BACKTRACK = 1;
             while BACKTRACK ==1
                 Forward_step2 = Ck+ac*(LtVWt-tmp2);
                 PGS = prox_matrix(Forward_step2,ac*alpha,[pp,qq,gLen]);
                 objPGS = obj(PGS);
                 if objPGS<=uk-d*norm(PGS-Sk,'fro')^2
                     BACKTRACK = 0;
-                end
-                ac = rho*ac;
-                if ac<STEP_SIZE
+                elseif ac<=STEP_SIZE
                     ac = STEP_SIZE;
                     BACKTRACK = 0;
+                else
+                    ac = rho*ac;
                 end
             end
         else
@@ -126,12 +113,18 @@ while k<IT_MAX
     ERR = norm(Ckp1-Ck,'fro');
     ERRprev = norm(Ck,'fro');
     history.relstep(k,1) = ERR/ERRprev;
-    if ((ERR<(TOL*ERRprev)) || (all(Ckp1==0,'all'))) && k>2 %|| ((k>1) && (abs(objval-history.obj(k-1))<objTOL*objval))
+    if ERR ==0
+        C = Ckp1;
+        FLAG = 0;
+        break;
+    end
+    if (((ERR<=(TOL*ERRprev))&& (k>3)) || (all(Ckp1==0,'all')))  %|| ((k>1) && (abs(objval-history.obj(k-1))<objTOL*objval))
         C = (Ckp1);
         FLAG = 0;
-        if k<5 && (any(Ckp1~=0,'all')) % remove when finished
-            error('The iterations may converge too early')
-        end
+%         if k<12 && (any(Ckp1~=0,'all')) % remove when finished
+%             error('The iterations may converge too early')
+%         end
+        fprintf('TOTAL_ITERATION: %d, objval:%.3f\n \n',k,objval)
         break
     else
         C = (Ckp1);

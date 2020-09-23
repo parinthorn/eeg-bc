@@ -1,7 +1,8 @@
 %%% Simulation data experiment: 3 deep source density: 0%,50%,75%
 %%%                             2 active source density: 20%, 40%
 %%%                             4 No. of electrodes: 108, 61, 32, 19
-%%% This script also
+%%% This script iterates through the data in foldername with name eegdata_postfix
+%%% with groundtruth model_postfix
 %%% Written by Parinthorn Manomaisaowapak
 clear
 clc
