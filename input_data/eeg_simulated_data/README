@@ -1,0 +1,12 @@
+
+The data are in the format of 
+
+eegdata_act_X_deep_Y_1.mat
+model_act_X_deep_Y_1.mat
+
+where 'eegdata' contains EEG time series and 'model' contains the ground-truth state-space parameter.
+
+X = number of active sources (in our experiment, m = number of all sources = 50, so X \in {10, 20} corresponding to 20% and 40% active sources.
+Y = number of deep sources (in our experiments, sources are selected from 4 ROIs, so Y \in {0,2,3} corresponding to 0%, 50%, and 75% deep sources. 
+
+The postfix '_1' refers to the sample index. We have generated 100 runs of these data. The complete 100 runs can be obtained from the shared link of input_data folder. 
