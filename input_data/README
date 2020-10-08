@@ -1,0 +1,15 @@
+The input files also contain folders
+
+nyhead_model: New York head model by
+https://www.parralab.org/nyhead/
+
+ssvep_eeg: SSVEP EEG data set by Tamer Demiralp
+Istanbul University, Hulusi Behcet Life Sciences Research Laboratory, Neuroimaging Unit.
+
+source_recon_brainstorm: Simulated EEG data set in brainstorm format
+
+eeg_simulated_data: contain six sub-folders of simulated EEG time series under variation of percentage of active and deep sources. 
+
+The total files are huge (more than 100GB), so we put the link to these data instead.
+
+https://drive.google.com/drive/folders/102xSbwUsKIZMpD9xg3loGPipGO7s_58K?usp=sharing
