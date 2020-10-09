@@ -45,13 +45,17 @@
 %           Peter Van Overschee / Bart De Moor
 %           Kluwer Academic Publishers, 1996
 %           Stochastic algorithm:   Figure 3.13 page 90 (positive)
-%           Combined algorithm:     Figure 4.8 page 131 (robust)
+%
+%	    Manuscript: 
+%		Granger Causality Inference in EEG Source Connectivity Analysis: A State-Space Approach
+%		Parinthorn Manomaisaowapak, Anawat Nartkulpat, Jitkomut Songsiri
+%
+%	    	https://www.biorxiv.org/content/10.1101/2020.10.07.329276v1
 %
 %   Originally written by Peter Van Overschee
 %   Modified by Anawat Nartkulpat, Parinthorn Manomaisaowapak, 2020
 %
 %   Copyright:
-%
 %           Anawat Nartkulpat, Parinthorn Manomaisaowapak
 %
 
