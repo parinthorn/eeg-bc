@@ -20,7 +20,7 @@
 %   ------ Write more about C estimation?? ------
 %
 %   The function is in the following form;
-%           [sys_est,C_out,ss_out] = subid_eeg_Lpq(y,L,i,n,sil)
+%           [sys_est,C_out,ss_out] = subid_eeg_L21(y,L,i,n,sil)
 %
 %   Inputs:
 %           y:          matrix of measured outputs
@@ -40,20 +40,6 @@
 %                       and also contain bic scores and the chosen index
 %           ss_out:     singular values
 %
-%   Optional:
-%
-%           [A,B,C,D,K,R,AUX,ss] = subid(y,i,n,AUX,W,sil);
-%
-%           n:    optional order estimate (default [])
-%                 if not given, the user is prompted for the order
-%           AUX:  optional auxilary variable to increase speed (default [])
-%           W:    optional weighting flag
-%                      SV:    Singular values based algorithm
-%                             (default for systems with input u)
-%                      CVA:   Canonical variate based algorithm
-%                             (default for systems without input u)
-%           ss:   column vector with singular values
-%           sil:  when equal to 1 no text output is generated
 %
 %   Reference:
 %
