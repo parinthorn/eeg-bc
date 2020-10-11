@@ -21,7 +21,7 @@ source_selection: estimation of state-space model with sparse prior on the rows 
 
 gc_computation: calculate estimated Granger causality matrix.
 
-pvo_subspace: original necessary files for subspace identification by OVERCHEE.
+pvo_subspace: original necessary files for subspace identification by Peter Van Overschee.
 
 input_data: examples of EEG time series, head model, all required inputs to run experiment.
 
