@@ -27,8 +27,12 @@ input_data: examples of EEG time series, head model, all required inputs to run 
 
 experiment: codes for each experiment explained in the paper.
 
-Our program require CVX installed in MATLAB (to solve the noise covariance estimation problem, which is a convex program)
+Dependencies: Our codes rely on several sources in the following. 
+1) Based codes for stochastic subspace identification by Peter Van OVerschee
+https://homes.esat.kuleuven.be/~smc/sysid/software/
+2) Model generation by S. Haufe et.al. This includes the calculation of head model and EEG signal generation. Our implementation extends the codes from Haufe. 
+http://bbci.de/supplementary/EEGconnectivity/BBCB.html
+3) CVX: Our program require CVX installed in MATLAB (to solve the noise covariance estimation problem, which is a convex program)
 Available at http://cvxr.com/cvx/download/
-
-Our codes also rely on some buit-in MATLAB commands from control or DSP toolboxes, e.g, solving RICCATI equation, generating pinknoise.
+4) Some buit-in MATLAB commands from control or DSP toolboxes, e.g, solving RICCATI equation, generating pinknoise.
 
