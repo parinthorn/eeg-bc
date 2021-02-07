@@ -70,7 +70,6 @@ function [FR,Sigma] = calgcss(A,C,W,V,S)
         Sreduce(:,j) = [];      % reduce jth column of S
         [Preduce,~,~] = dare(A',Creduce',W,Vreduce,Sreduce); 
         SigmaR = Creduce*Preduce*Creduce'+Vreduce;
-%         diagSigmaR = diag(SigmaR);      % collect Sigma_ii of reduced model
         ind(j) = [];                    
         tmpvar{j} = ind;
         tmpvar2{j} = diag(SigmaR);
