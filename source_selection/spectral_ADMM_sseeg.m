@@ -91,7 +91,7 @@ z1old = z1;
 z2old = z2;
 z1hatold = z1hat;
 z2hatold = z2hat;
-obj = 0.5*norm(G*x1-b)^2 + a1*normpq(x2,pp,qq,p)+a2*normpq(x3,pp,qq,p*K);
+obj = 0.5*norm(G*x1-b)^2 + a1*normpq_vec(x2,pp,qq,p)+a2*normpq_vec(x3,pp,qq,p*K);
 L = chol(GtG+2*rhotilde*PtP,'lower');
 L = sparse(L); U = L';
 % Lg = sparse(chol(GtG,'lower'));
@@ -179,7 +179,7 @@ for k=1:MAXITERS,
 
     % stopping criterion
 
-    obj = 0.5*norm(G*x1-b)^2 + a1*normpq(x2,pp,qq,p)+a2*normpq(x3,pp,qq,p*K);
+    obj = 0.5*norm(G*x1-b)^2 + a1*normpq_vec(x2,pp,qq,p)+a2*normpq_vec(x3,pp,qq,p*K);
     history.objval(k) = obj;
     history.r_norm(k) = norm([Px1-x2;Px1-x3]);
     history.s_norm(k)  = norm(rhotilde*([x2 - x2old+x3-x3old]));
