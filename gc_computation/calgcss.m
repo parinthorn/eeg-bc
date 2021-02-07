@@ -52,7 +52,7 @@ function [FR,Sigma] = calgcss(A,C,W,V,S)
     S(:,rz) = [];
     
     %---------------------------- Full model ------------------------------   
-    [P,~,~,~] = idare(A',C',W,V); % solve RICCATI for full model
+    [P,~,~,~] = idare(A',C',W,V,S); % solve RICCATI for full model
     Sigma = C*P*C' + V;
     diagSigma = diag(Sigma);    % collect Sigma_ii of full model
     
