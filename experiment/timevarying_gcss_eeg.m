@@ -27,13 +27,9 @@ clear all; close all; clc;
 % The path may need an adjustment upon how the main functions are stored in the
 % local folder
 
-addpath('../data_generation/');
-addpath('../gc_computation');
 addpath('../pvo_subspace/subfun');
-addpath('../source_selection');
-addpath('../others');
-
-% CVX path may also need a setup
+addpath('./estimation_functions');
+tostartupcvx
 
 %%   Generate VAR model parameters
 n = 3; p = 2 ; % AR parameters 
@@ -42,9 +38,10 @@ r = 10; % number of electrodes
 Ts = 1; sigma = 0.1 ; % variance of noise w(t)
 T = 5000; % number of time points
 NUMRUNS = 500; % number of repetition to get histogram of F
-K = 2; % Number of switching VAR models
+K = 10; % Number of switching VAR models
 
 figfilename = 'timevarying_eegGC_decreasing_K2_v1';
+% figfilename = 'timevarying_eegGC_increasing_K1_v1';
 
 %   Generate an invertible stable diagonal filter and convert to ss model
 filter_tf = gen_diagfilter(0,1,n);
@@ -57,7 +54,7 @@ indFnz = [1 3;2 3;2 1]; % example 1
 if K==1
     Anz = 0.2; Aii = 0.5;
 else
-    % Anz = linspace(0,0.2,K); Aii = 0.5; % A is increasing
+%     Anz = linspace(0,0.2,K); Aii = 0.5; % A is increasing
     Anz = linspace(0.2,0,K); Aii = 0.5; % A is decreasing
 end
 
@@ -112,19 +109,24 @@ Fhat = zeros(m,m,NUMRUNS); % contain NUMRUNS of estimated GC
 parfor ii = 1:NUMRUNS
     
     z0 = rand(nstate,1); noisey_vec = sqrt(sigma)*randn(T,r);
+    
+    if K==1
+        y = lsim(eegsys{1},sqrt(sigma)*randn(T,n),(0:(T-1))',z0) + noisey_vec;    % y is T x r 
 
-    timepointk = repmat(ceil(T/K),1,K-1); timepointk(K) = T-ceil(T/K)*(K-1); % number of time points in each chunk
-    y = [];
-    for k=1:K
-        noisew_vec = sqrt(sigma)*randn(timepointk(k),n);
-        noisey_vec = sqrt(sigma)*randn(timepointk(k),r);
+    else
+        timepointk = repmat(ceil(T/K),1,K-1); timepointk(K) = T-ceil(T/K)*(K-1); % number of time points in each chunk
+    
+        y = [];
+        for k=1:K
+            noisew_vec = sqrt(sigma)*randn(timepointk(k),n);
+            noisey_vec = sqrt(sigma)*randn(timepointk(k),r);
         
-        ztmp = lsim(eegsys2sim{k},noisew_vec,(0:(timepointk(k)-1))',z0)'; % after transpose, size is nstate x T
+            ztmp = lsim(eegsys2sim{k},noisew_vec,(0:(timepointk(k)-1))',z0)'; % after transpose, size is nstate x T
 
-        z0 = ztmp(:,end-1); % pass the last value of this chunk as the inital value for another segment
-        y = [y ; (eegsys{k}.C*ztmp)'+noisey_vec];
-end
-
+            z0 = ztmp(:,end-1); % pass the last value of this chunk as the inital value for another segment
+            y = [y ; (eegsys{k}.C*ztmp)'+noisey_vec];
+        end
+    end
 [estsys,C_out] = subid_eeg_L21(y,L,10,-1);  % i = 10 and let the program choose 'nstate'
 C_ind = C_out.ind_chosen_L21.bic;
 Ahat = estsys.A; % This is nstate x nstate
@@ -144,7 +146,7 @@ end
 
 %% Plot graphs
 % n^2-n = 6 ; use (2,3) 
-
+load jsscolor
 
 figure(1); fig = tiledlayout(2,3); fig.TileSpacing = 'compact'; fig.Padding = 'compact';
 timeindex = [(0:ceil(T/K):(K-1)*ceil(T/K))' ; T] ; % transition time
@@ -157,7 +159,7 @@ for ii=1:n
             pooledF = squeeze(Fhat(ii,jj,:)) ; % add the last value again
             
             nexttile;
-            histogram(pooledF,10,'normalization','probability'); 
+            histogram(pooledF,50,'normalization','probability','FaceColor',jsscolor.bl); 
             
             if (tileindex == 1 || tileindex == 4 )
                 ylabel('Probability');
